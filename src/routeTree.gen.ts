@@ -9,38 +9,194 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as BrowseRouteImport } from './routes/browse'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CreatorsCreatorIdRouteImport } from './routes/creators.$creatorId'
+import { Route as AuthenticatedCreatorDashboardRouteImport } from './routes/_authenticated/creator-dashboard'
+import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
+import { Route as AuthenticatedBecomeCreatorRouteImport } from './routes/_authenticated/become-creator'
+import { Route as AuthenticatedRoomBookingIdRouteImport } from './routes/_authenticated/room.$bookingId'
+import { Route as AuthenticatedBookPackageIdRouteImport } from './routes/_authenticated/book.$packageId'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrowseRoute = BrowseRouteImport.update({
+  id: '/browse',
+  path: '/browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorsCreatorIdRoute = CreatorsCreatorIdRouteImport.update({
+  id: '/creators/$creatorId',
+  path: '/creators/$creatorId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedCreatorDashboardRoute =
+  AuthenticatedCreatorDashboardRouteImport.update({
+    id: '/creator-dashboard',
+    path: '/creator-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBookingsRoute = AuthenticatedBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBecomeCreatorRoute =
+  AuthenticatedBecomeCreatorRouteImport.update({
+    id: '/become-creator',
+    path: '/become-creator',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRoomBookingIdRoute =
+  AuthenticatedRoomBookingIdRouteImport.update({
+    id: '/room/$bookingId',
+    path: '/room/$bookingId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBookPackageIdRoute =
+  AuthenticatedBookPackageIdRouteImport.update({
+    id: '/book/$packageId',
+    path: '/book/$packageId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/become-creator': typeof AuthenticatedBecomeCreatorRoute
+  '/bookings': typeof AuthenticatedBookingsRoute
+  '/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/creators/$creatorId': typeof CreatorsCreatorIdRoute
+  '/book/$packageId': typeof AuthenticatedBookPackageIdRoute
+  '/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/become-creator': typeof AuthenticatedBecomeCreatorRoute
+  '/bookings': typeof AuthenticatedBookingsRoute
+  '/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/creators/$creatorId': typeof CreatorsCreatorIdRoute
+  '/book/$packageId': typeof AuthenticatedBookPackageIdRoute
+  '/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/browse': typeof BrowseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/_authenticated/become-creator': typeof AuthenticatedBecomeCreatorRoute
+  '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
+  '/_authenticated/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/creators/$creatorId': typeof CreatorsCreatorIdRoute
+  '/_authenticated/book/$packageId': typeof AuthenticatedBookPackageIdRoute
+  '/_authenticated/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/browse'
+    | '/sitemap.xml'
+    | '/become-creator'
+    | '/bookings'
+    | '/creator-dashboard'
+    | '/creators/$creatorId'
+    | '/book/$packageId'
+    | '/room/$bookingId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/browse'
+    | '/sitemap.xml'
+    | '/become-creator'
+    | '/bookings'
+    | '/creator-dashboard'
+    | '/creators/$creatorId'
+    | '/book/$packageId'
+    | '/room/$bookingId'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/browse'
+    | '/sitemap.xml'
+    | '/_authenticated/become-creator'
+    | '/_authenticated/bookings'
+    | '/_authenticated/creator-dashboard'
+    | '/creators/$creatorId'
+    | '/_authenticated/book/$packageId'
+    | '/_authenticated/room/$bookingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  BrowseRoute: typeof BrowseRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  CreatorsCreatorIdRoute: typeof CreatorsCreatorIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/browse': {
+      id: '/browse'
+      path: '/browse'
+      fullPath: '/browse'
+      preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +204,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creators/$creatorId': {
+      id: '/creators/$creatorId'
+      path: '/creators/$creatorId'
+      fullPath: '/creators/$creatorId'
+      preLoaderRoute: typeof CreatorsCreatorIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/creator-dashboard': {
+      id: '/_authenticated/creator-dashboard'
+      path: '/creator-dashboard'
+      fullPath: '/creator-dashboard'
+      preLoaderRoute: typeof AuthenticatedCreatorDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bookings': {
+      id: '/_authenticated/bookings'
+      path: '/bookings'
+      fullPath: '/bookings'
+      preLoaderRoute: typeof AuthenticatedBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/become-creator': {
+      id: '/_authenticated/become-creator'
+      path: '/become-creator'
+      fullPath: '/become-creator'
+      preLoaderRoute: typeof AuthenticatedBecomeCreatorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/room/$bookingId': {
+      id: '/_authenticated/room/$bookingId'
+      path: '/room/$bookingId'
+      fullPath: '/room/$bookingId'
+      preLoaderRoute: typeof AuthenticatedRoomBookingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/book/$packageId': {
+      id: '/_authenticated/book/$packageId'
+      path: '/book/$packageId'
+      fullPath: '/book/$packageId'
+      preLoaderRoute: typeof AuthenticatedBookPackageIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedBecomeCreatorRoute: typeof AuthenticatedBecomeCreatorRoute
+  AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
+  AuthenticatedCreatorDashboardRoute: typeof AuthenticatedCreatorDashboardRoute
+  AuthenticatedBookPackageIdRoute: typeof AuthenticatedBookPackageIdRoute
+  AuthenticatedRoomBookingIdRoute: typeof AuthenticatedRoomBookingIdRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedBecomeCreatorRoute: AuthenticatedBecomeCreatorRoute,
+  AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
+  AuthenticatedCreatorDashboardRoute: AuthenticatedCreatorDashboardRoute,
+  AuthenticatedBookPackageIdRoute: AuthenticatedBookPackageIdRoute,
+  AuthenticatedRoomBookingIdRoute: AuthenticatedRoomBookingIdRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  BrowseRoute: BrowseRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  CreatorsCreatorIdRoute: CreatorsCreatorIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
