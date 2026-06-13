@@ -17,7 +17,7 @@
 #   wrangler secret put ZOOM_SDK_KEY        (optional)
 #   wrangler secret put ZOOM_SDK_SECRET     (optional)
 
-name = "creatorconnect"
+name = "your-daily-progress"
 main = "dist/server/server.js"
 compatibility_date = "2025-06-13"
 compatibility_flags = ["nodejs_compat"]
