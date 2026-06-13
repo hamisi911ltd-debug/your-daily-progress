@@ -36,7 +36,7 @@ function BecomeCreatorPage() {
     onError: (e: any) => toast.error(e?.message ?? "Failed"),
   });
 
-  if (existing?.isCreator) {
+  if ((existing as any)?.isCreator) {
     return (
       <div className="mx-auto max-w-2xl p-12 text-center">
         <h1 className="font-display text-3xl font-bold">You're already a creator 🎉</h1>

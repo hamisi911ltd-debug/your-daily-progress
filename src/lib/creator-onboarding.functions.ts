@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/integrations/cloudflare/auth-middleware";
+import { d1One, d1All, d1Run } from "@/integrations/cloudflare/d1";
 
 const Input = z.object({
   headline: z.string().trim().min(8).max(120),
@@ -10,27 +11,28 @@ const Input = z.object({
 });
 
 export const becomeCreator = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    const { userId } = context;
 
-    const { error: cpErr } = await supabase
-      .from("creator_profiles")
-      .upsert({
-        user_id: userId,
-        headline: data.headline,
-        long_bio: data.longBio,
-        niche_tags: data.nicheTags,
-        starting_price_kes: data.startingPriceKes,
-        active: true,
-      });
-    if (cpErr) throw new Error(cpErr.message);
+    await d1Run(
+      `INSERT INTO creator_profiles
+         (user_id, headline, long_bio, niche_tags, starting_price_kes, active, created_at)
+       VALUES (?, ?, ?, ?, ?, 1, datetime('now'))
+       ON CONFLICT(user_id) DO UPDATE SET
+         headline = excluded.headline,
+         long_bio = excluded.long_bio,
+         niche_tags = excluded.niche_tags,
+         starting_price_kes = excluded.starting_price_kes,
+         active = 1`,
+      [userId, data.headline, data.longBio, JSON.stringify(data.nicheTags), data.startingPriceKes]
+    );
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("user_roles")
-      .upsert({ user_id: userId, role: "creator" }, { onConflict: "user_id,role" });
+    await d1Run(
+      "INSERT OR IGNORE INTO user_roles (user_id, role, created_at) VALUES (?, 'creator', datetime('now'))",
+      [userId]
+    );
 
     return { ok: true };
   });
@@ -41,67 +43,77 @@ const PackageInput = z.object({
   description: z.string().trim().max(500).optional(),
   durationMinutes: z.number().int().min(10).max(240),
   priceKes: z.number().int().min(100).max(500_000),
+  sessionType: z.enum(["online", "in-person", "hybrid"]).optional(),
+  location: z.string().trim().max(200).optional(),
   active: z.boolean().optional(),
 });
 
 export const upsertPackage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((d: unknown) => PackageInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const payload = {
-      id: data.id,
-      creator_id: userId,
-      title: data.title,
-      description: data.description ?? null,
-      duration_minutes: data.durationMinutes,
-      price_kes: data.priceKes,
-      active: data.active ?? true,
-    };
-    const { error } = await supabase.from("session_packages").upsert(payload);
-    if (error) throw new Error(error.message);
+    const { userId } = context;
+    const id = data.id ?? crypto.randomUUID();
 
-    // refresh starting_price_kes on creator profile
-    const { data: minRow } = await supabase
-      .from("session_packages")
-      .select("price_kes")
-      .eq("creator_id", userId)
-      .eq("active", true)
-      .order("price_kes", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (minRow) {
-      await supabase
-        .from("creator_profiles")
-        .update({ starting_price_kes: minRow.price_kes })
-        .eq("user_id", userId);
+    await d1Run(
+      `INSERT INTO session_packages
+         (id, creator_id, title, description, duration_minutes, price_kes, session_type, location, active, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       ON CONFLICT(id) DO UPDATE SET
+         title = excluded.title,
+         description = excluded.description,
+         duration_minutes = excluded.duration_minutes,
+         price_kes = excluded.price_kes,
+         session_type = excluded.session_type,
+         location = excluded.location,
+         active = excluded.active`,
+      [
+        id,
+        userId,
+        data.title,
+        data.description ?? null,
+        data.durationMinutes,
+        data.priceKes,
+        data.sessionType ?? "online",
+        data.location ?? null,
+        data.active === false ? 0 : 1,
+      ]
+    );
+
+    const minRow = await d1One<{ min_price: number }>(
+      "SELECT MIN(price_kes) as min_price FROM session_packages WHERE creator_id = ? AND active = 1",
+      [userId]
+    );
+    if (minRow?.min_price != null) {
+      await d1Run(
+        "UPDATE creator_profiles SET starting_price_kes = ? WHERE user_id = ?",
+        [minRow.min_price, userId]
+      );
     }
+
     return { ok: true };
   });
 
 export const getMyCreatorProfile = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("creator_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const { data: packages } = await supabase
-      .from("session_packages")
-      .select("*")
-      .eq("creator_id", userId)
-      .order("created_at", { ascending: false });
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
+    const { userId } = context;
+
+    const profile = await d1One("SELECT * FROM creator_profiles WHERE user_id = ?", [userId]);
+    const packages = await d1All(
+      "SELECT * FROM session_packages WHERE creator_id = ? ORDER BY created_at DESC",
+      [userId]
+    );
+    const roles = await d1All<{ role: string }>(
+      "SELECT role FROM user_roles WHERE user_id = ?",
+      [userId]
+    );
+
     return {
       isCreator: !!profile,
       hasCreatorRole: (roles ?? []).some((r) => r.role === "creator"),
-      profile,
-      packages: packages ?? [],
+      profile: profile as any,
+      packages: (packages ?? []) as any[],
     };
   });
 
@@ -113,21 +125,31 @@ const ProfileUpdateInput = z.object({
 });
 
 export const updateMyProfile = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((d: unknown) => ProfileUpdateInput.parse(d))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const update: {
-      display_name?: string;
-      bio?: string | null;
-      location?: string | null;
-      avatar_url?: string | null;
-    } = {};
-    if (data.displayName) update.display_name = data.displayName;
-    if (data.bio !== undefined) update.bio = data.bio;
-    if (data.location !== undefined) update.location = data.location;
-    if (data.avatarUrl !== undefined) update.avatar_url = data.avatarUrl;
-    const { error } = await supabase.from("profiles").update(update).eq("id", userId);
-    if (error) throw new Error(error.message);
+    const { userId } = context;
+
+    const sets: string[] = [];
+    const params: unknown[] = [];
+    if (data.displayName) { sets.push("display_name = ?"); params.push(data.displayName); }
+    if (data.bio !== undefined) { sets.push("bio = ?"); params.push(data.bio); }
+    if (data.location !== undefined) { sets.push("location = ?"); params.push(data.location); }
+    if (data.avatarUrl !== undefined) { sets.push("avatar_url = ?"); params.push(data.avatarUrl); }
+    if (!sets.length) return { ok: true };
+
+    params.push(userId);
+    await d1Run(`UPDATE profiles SET ${sets.join(", ")} WHERE id = ?`, params);
+
+    // Keep users table in sync for JWT refresh
+    const userSets: string[] = [];
+    const userParams: unknown[] = [];
+    if (data.displayName) { userSets.push("display_name = ?"); userParams.push(data.displayName); }
+    if (data.avatarUrl !== undefined) { userSets.push("avatar_url = ?"); userParams.push(data.avatarUrl); }
+    if (userSets.length) {
+      userParams.push(userId);
+      await d1Run(`UPDATE users SET ${userSets.join(", ")} WHERE id = ?`, userParams);
+    }
+
     return { ok: true };
   });

@@ -1,13 +1,18 @@
-// Integration-managed auth gate.
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { getTokenPayload } from "@/integrations/cloudflare/auth";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+  beforeLoad: () => {
+    const payload = getTokenPayload();
+    if (!payload) throw redirect({ to: "/auth" });
+    return {
+      user: {
+        id: payload.sub,
+        email: payload.email,
+        user_metadata: { full_name: payload.name, avatar_url: payload.avatar_url },
+      },
+    };
   },
   component: () => <Outlet />,
 });

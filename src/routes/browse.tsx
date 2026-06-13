@@ -34,11 +34,11 @@ function BrowsePage() {
   const [niche, setNiche] = useState<string | null>(null);
 
   const filtered = data.creators.filter((c) => {
-    if (niche && !c.niche_tags.some((t) => t.toLowerCase() === niche.toLowerCase())) return false;
+    if (niche && !c.niche_tags.some((t: string) => t.toLowerCase() === niche.toLowerCase())) return false;
     if (search) {
       const q = search.toLowerCase();
       return c.display_name.toLowerCase().includes(q) || c.headline.toLowerCase().includes(q) ||
-        c.niche_tags.some((t) => t.toLowerCase().includes(q));
+        c.niche_tags.some((t: string) => t.toLowerCase().includes(q));
     }
     return true;
   });

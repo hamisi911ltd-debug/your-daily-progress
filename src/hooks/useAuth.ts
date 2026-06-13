@@ -1,25 +1,30 @@
 import { useEffect, useState } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  getTokenPayload,
+  clearStoredToken,
+  jwtToUser,
+  type AuthUser,
+} from "@/integrations/cloudflare/auth";
 
 export function useAuth() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  function sync() {
+    const payload = getTokenPayload();
+    setUser(payload ? jwtToUser(payload) : null);
+    setLoading(false);
+  }
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      setLoading(false);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-    return () => subscription.unsubscribe();
+    sync();
+    window.addEventListener("cc:auth:change", sync);
+    return () => window.removeEventListener("cc:auth:change", sync);
   }, []);
 
-  return { session, user, loading };
+  function signOut() {
+    clearStoredToken();
+  }
+
+  return { user, loading, signOut };
 }

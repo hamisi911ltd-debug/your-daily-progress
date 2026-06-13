@@ -4,8 +4,14 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { getCreator } from "@/lib/creators.functions";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { BadgeCheck, Star, Clock, MapPin } from "lucide-react";
+import { BadgeCheck, Star, Clock, MapPin, Video, Layers } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+
+const SESSION_TYPE_ICONS: Record<string, React.ReactNode> = {
+  online:     <Video className="h-3.5 w-3.5" />,
+  "in-person":<MapPin className="h-3.5 w-3.5" />,
+  hybrid:     <Layers className="h-3.5 w-3.5" />,
+};
 
 const creatorQuery = (id: string) => queryOptions({
   queryKey: ["creator", id],
@@ -13,8 +19,8 @@ const creatorQuery = (id: string) => queryOptions({
 });
 
 export const Route = createFileRoute("/creators/$creatorId")({
-  head: ({ loaderData }) => {
-    const c = loaderData?.creator;
+  head: ({ loaderData }: any) => {
+    const c = (loaderData as any)?.creator;
     const title = c ? `${c.display_name} on CreatorConnect` : "Creator · CreatorConnect";
     const desc = c?.headline ?? "Book a private 1:1 video session.";
     return {
@@ -36,21 +42,28 @@ function CreatorDetail() {
   const { data } = useSuspenseQuery(creatorQuery(creatorId));
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<string | null>(data.packages[0]?.id ?? null);
+  const packages: any[] = (data as any).packages ?? [];
+  const reviews: any[] = (data as any).reviews ?? [];
+  const [selected, setSelected] = useState<string | null>(packages[0]?.id ?? null);
 
-  if (!data.creator) return (
+  if (!(data as any).creator) return (
     <div className="mx-auto max-w-2xl p-12 text-center">
       <h1 className="font-display text-3xl font-bold">Creator not found</h1>
       <Button asChild className="mt-6"><Link to="/browse">Back to browse</Link></Button>
     </div>
   );
 
-  const c = data.creator;
+  const c = (data as any).creator;
 
   function book() {
     if (!selected) return;
     if (!user) { navigate({ to: "/auth", search: { mode: "signup" } }); return; }
-    navigate({ to: "/book/$packageId", params: { packageId: selected } });
+    const pkg = packages.find((p: any) => p.id === selected);
+    navigate({
+      to: "/book/$packageId",
+      params: { packageId: selected },
+      search: { sessionType: (pkg as any)?.session_type ?? "online", location: (pkg as any)?.location ?? "" },
+    });
   }
 
   return (
@@ -71,7 +84,7 @@ function CreatorDetail() {
           </div>
           <div className="flex flex-col justify-end">
             <div className="flex flex-wrap items-center gap-2">
-              {c.niche_tags.map((t) => <span key={t} className="rounded-full bg-secondary-foreground/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur">{t}</span>)}
+              {c.niche_tags.map((t: string) => <span key={t} className="rounded-full bg-secondary-foreground/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur">{t}</span>)}
               {c.verified && <span className="inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground"><BadgeCheck className="h-3.5 w-3.5" /> Verified</span>}
             </div>
             <h1 className="mt-4 font-display text-5xl font-extrabold leading-tight sm:text-6xl">{c.display_name}</h1>
@@ -94,11 +107,11 @@ function CreatorDetail() {
 
           <section>
             <h2 className="font-display text-2xl font-bold">Reviews</h2>
-            {data.reviews.length === 0 ? (
+            {reviews.length === 0 ? (
               <p className="mt-4 text-muted-foreground">No reviews yet. Be the first to book a session.</p>
             ) : (
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {data.reviews.map((r) => (
+                {reviews.map((r) => (
                   <div key={r.id} className="rounded-2xl bg-card p-5 shadow-card">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9"><AvatarImage src={r.fan.avatar_url ?? undefined} /><AvatarFallback>{r.fan.display_name?.slice(0,2)}</AvatarFallback></Avatar>
@@ -120,8 +133,8 @@ function CreatorDetail() {
           <div className="rounded-3xl bg-card p-6 shadow-pop">
             <p className="text-xs font-semibold uppercase tracking-widest text-primary">Choose a package</p>
             <div className="mt-4 space-y-3">
-              {data.packages.length === 0 && <p className="text-sm text-muted-foreground">No packages available yet.</p>}
-              {data.packages.map((p) => (
+              {packages.length === 0 && <p className="text-sm text-muted-foreground">No packages available yet.</p>}
+              {packages.map((p: any) => (
                 <button
                   key={p.id}
                   onClick={() => setSelected(p.id)}
@@ -129,9 +142,21 @@ function CreatorDetail() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-display text-base font-bold">{p.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-display text-base font-bold">{p.title}</p>
+                        {p.session_type && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                            {SESSION_TYPE_ICONS[p.session_type]} {p.session_type}
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> {p.duration_minutes} min</p>
                       {p.description && <p className="mt-2 text-sm text-foreground/75">{p.description}</p>}
+                      {p.location && (
+                        <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> {p.location}
+                        </p>
+                      )}
                     </div>
                     <div className="text-right">
                       <p className="font-display text-lg font-bold text-primary">KES {p.price_kes.toLocaleString()}</p>

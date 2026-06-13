@@ -8,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Package } from "lucide-react";
+import { Plus, Package, Video, MapPin, Layers } from "lucide-react";
+
+const SESSION_TYPE_LABELS: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
+  online:     { icon: <Video className="h-3.5 w-3.5" />,  label: "Online (Zoom)",  color: "bg-primary/10 text-primary" },
+  "in-person":{ icon: <MapPin className="h-3.5 w-3.5" />, label: "In-person",      color: "bg-accent/20 text-accent-foreground" },
+  hybrid:     { icon: <Layers className="h-3.5 w-3.5" />, label: "Hybrid",         color: "bg-secondary/20 text-secondary-foreground" },
+};
 
 export const Route = createFileRoute("/_authenticated/creator-dashboard")({
   head: () => ({ meta: [{ title: "Creator dashboard · CreatorConnect" }] }),
@@ -22,7 +28,7 @@ function Dashboard() {
 
   if (isLoading) return <div className="p-12 text-center text-muted-foreground">Loading…</div>;
 
-  if (!data?.isCreator) {
+  if (!(data as any)?.isCreator) {
     return (
       <div className="mx-auto max-w-2xl p-12 text-center">
         <h1 className="font-display text-3xl font-bold">You haven't applied yet</h1>
@@ -37,12 +43,14 @@ function Dashboard() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-4xl font-bold">Creator dashboard</h1>
-          <p className="mt-1 text-muted-foreground">{data.profile?.headline}</p>
+          <p className="mt-1 text-muted-foreground">{(data as any).profile?.headline}</p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline"><Link to="/bookings">Incoming bookings</Link></Button>
-          {data.profile?.user_id && (
-            <Button asChild variant="ghost"><Link to="/creators/$creatorId" params={{ creatorId: data.profile.user_id }}>View public profile</Link></Button>
+          {(data as any).profile?.user_id && (
+            <Button asChild variant="ghost">
+              <Link to="/creators/$creatorId" params={{ creatorId: (data as any).profile.user_id }}>View public profile</Link>
+            </Button>
           )}
         </div>
       </div>
@@ -56,21 +64,36 @@ function Dashboard() {
         {showForm && <PackageForm onDone={() => setShowForm(false)} />}
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {data.packages.length === 0 && !showForm && (
+          {(data as any).packages.length === 0 && !showForm && (
             <div className="col-span-full rounded-2xl bg-card p-8 text-center shadow-card">
               <Package className="mx-auto h-10 w-10 text-primary" />
               <p className="mt-3 font-display text-lg font-bold">No packages yet</p>
               <p className="mt-1 text-sm text-muted-foreground">Add at least one package so fans can book you.</p>
             </div>
           )}
-          {data.packages.map((p) => (
-            <div key={p.id} className="rounded-2xl bg-card p-5 shadow-card">
-              <p className="font-display text-lg font-bold">{p.title}</p>
-              <p className="text-sm text-muted-foreground">{p.duration_minutes} min · KES {p.price_kes.toLocaleString()}</p>
-              {p.description && <p className="mt-2 text-sm text-foreground/80">{p.description}</p>}
-              <span className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.active ? "bg-accent text-accent-foreground" : "bg-muted"}`}>{p.active ? "Active" : "Inactive"}</span>
-            </div>
-          ))}
+          {(data as any).packages.map((p: any) => {
+            const st = SESSION_TYPE_LABELS[p.session_type ?? "online"] ?? SESSION_TYPE_LABELS.online;
+            return (
+              <div key={p.id} className="rounded-2xl bg-card p-5 shadow-card">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-display text-lg font-bold">{p.title}</p>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${st.color}`}>
+                    {st.icon} {st.label}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">{p.duration_minutes} min · KES {p.price_kes.toLocaleString()}</p>
+                {p.description && <p className="mt-2 text-sm text-foreground/80">{p.description}</p>}
+                {p.location && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" /> {p.location}
+                  </p>
+                )}
+                <span className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${p.active ? "bg-accent text-accent-foreground" : "bg-muted"}`}>
+                  {p.active ? "Active" : "Inactive"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>
@@ -82,20 +105,83 @@ function PackageForm({ onDone }: { onDone: () => void }) {
   const [desc, setDesc] = useState("");
   const [duration, setDuration] = useState("30");
   const [price, setPrice] = useState("2500");
+  const [sessionType, setSessionType] = useState<"online" | "in-person" | "hybrid">("online");
+  const [location, setLocation] = useState("");
   const upsert = useServerFn(upsertPackage);
   const qc = useQueryClient();
   const mut = useMutation({
-    mutationFn: () => upsert({ data: { title, description: desc, durationMinutes: parseInt(duration, 10), priceKes: parseInt(price, 10) } }),
-    onSuccess: () => { toast.success("Package created"); qc.invalidateQueries({ queryKey: ["my-creator-profile"] }); onDone(); },
+    mutationFn: () =>
+      upsert({
+        data: {
+          title,
+          description: desc,
+          durationMinutes: parseInt(duration, 10),
+          priceKes: parseInt(price, 10),
+          sessionType,
+          location: location || undefined,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Package created");
+      qc.invalidateQueries({ queryKey: ["my-creator-profile"] });
+      onDone();
+    },
     onError: (e: any) => toast.error(e?.message ?? "Failed"),
   });
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); mut.mutate(); }} className="mt-6 grid gap-4 rounded-2xl bg-card p-6 shadow-card sm:grid-cols-2">
-      <div className="sm:col-span-2"><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} /></div>
-      <div className="sm:col-span-2"><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} /></div>
-      <div><Label>Duration (min)</Label><Input type="number" min={10} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} required /></div>
-      <div><Label>Price (KES)</Label><Input type="number" min={100} max={500000} value={price} onChange={(e) => setPrice(e.target.value)} required /></div>
+    <form
+      onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
+      className="mt-6 grid gap-4 rounded-2xl bg-card p-6 shadow-card sm:grid-cols-2"
+    >
+      <div className="sm:col-span-2">
+        <Label>Title</Label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
+      </div>
+      <div className="sm:col-span-2">
+        <Label>Description</Label>
+        <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={500} rows={3} />
+      </div>
+      <div>
+        <Label>Duration (min)</Label>
+        <Input type="number" min={10} max={240} value={duration} onChange={(e) => setDuration(e.target.value)} required />
+      </div>
+      <div>
+        <Label>Price (KES)</Label>
+        <Input type="number" min={100} max={500000} value={price} onChange={(e) => setPrice(e.target.value)} required />
+      </div>
+      <div className="sm:col-span-2">
+        <Label>Session type</Label>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(["online", "in-person", "hybrid"] as const).map((t) => {
+            const st = SESSION_TYPE_LABELS[t];
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setSessionType(t)}
+                className={`inline-flex items-center gap-1.5 rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${
+                  sessionType === t ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
+                }`}
+              >
+                {st.icon} {st.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {(sessionType === "in-person" || sessionType === "hybrid") && (
+        <div className="sm:col-span-2">
+          <Label>Meeting location</Label>
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            maxLength={200}
+            placeholder="e.g. Nairobi CBD, ABC Place, 3rd Floor"
+            required={sessionType === "in-person"}
+          />
+        </div>
+      )}
       <div className="sm:col-span-2 flex gap-2">
         <Button type="submit" variant="hero" disabled={mut.isPending}>Save package</Button>
         <Button type="button" variant="ghost" onClick={onDone}>Cancel</Button>

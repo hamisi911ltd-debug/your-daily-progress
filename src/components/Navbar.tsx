@@ -1,8 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, LogOut, LayoutDashboard, CalendarCheck2 } from "lucide-react";
+import { LogOut, LayoutDashboard, CalendarCheck2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,11 +12,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  async function signOut() {
-    await supabase.auth.signOut();
+  function handleSignOut() {
+    signOut();
     navigate({ to: "/" });
   }
 
@@ -29,11 +28,12 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-sunset text-primary-foreground shadow-glow">
-            <Sparkles className="h-4 w-4" />
-          </span>
-          <span>creatorconnect</span>
+        <Link to="/" className="flex items-center gap-2">
+          <img
+            src="/logo.png"
+            alt="CreatorConnect"
+            className="h-8 w-auto object-contain"
+          />
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
@@ -59,7 +59,9 @@ export function Navbar() {
                 <button className="flex items-center gap-2 rounded-full border border-border/60 bg-card p-1 pr-3 shadow-card transition hover:border-primary/50">
                   <Avatar className="h-7 w-7">
                     <AvatarImage src={user.user_metadata?.avatar_url} />
-                    <AvatarFallback className="bg-secondary text-xs text-secondary-foreground">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-secondary text-xs text-secondary-foreground">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium sm:inline">
                     {user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0]}
@@ -68,13 +70,17 @@ export function Navbar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild>
-                  <Link to="/bookings"><CalendarCheck2 className="mr-2 h-4 w-4" /> My bookings</Link>
+                  <Link to="/bookings">
+                    <CalendarCheck2 className="mr-2 h-4 w-4" /> My bookings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/creator-dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /> Creator dashboard</Link>
+                  <Link to="/creator-dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" /> Creator dashboard
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut}>
+                <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -85,7 +91,9 @@ export function Navbar() {
                 <Link to="/auth">Sign in</Link>
               </Button>
               <Button variant="hero" size="sm" asChild>
-                <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Get started
+                </Link>
               </Button>
             </>
           )}

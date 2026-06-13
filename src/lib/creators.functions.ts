@@ -1,65 +1,75 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-// Public reads. We use the service-role admin client behind a server fn
-// so we can do explicit safe-column projection and avoid leaking PII.
-
-const ListInput = z.object({
-  search: z.string().trim().max(80).optional(),
-  niche: z.string().trim().max(40).optional(),
-}).partial();
+const ListInput = z
+  .object({
+    search: z.string().trim().max(80).optional(),
+    niche: z.string().trim().max(40).optional(),
+  })
+  .partial();
 
 export const listCreators = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => ListInput.parse(d ?? {}))
+  .validator((d: unknown) => ListInput.parse(d ?? {}))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { d1All } = await import("@/integrations/cloudflare/d1");
 
-    let query = supabaseAdmin
-      .from("creator_profiles")
-      .select("user_id, headline, hero_image_url, niche_tags, verified, average_rating, total_sessions, starting_price_kes")
-      .eq("active", true)
-      .order("verified", { ascending: false })
-      .order("average_rating", { ascending: false })
-      .limit(60);
+    type Row = {
+      user_id: string;
+      headline: string;
+      hero_image_url: string | null;
+      niche_tags: string;
+      verified: number;
+      average_rating: number;
+      total_sessions: number;
+      starting_price_kes: number;
+      display_name: string | null;
+      avatar_url: string | null;
+      location: string | null;
+    };
 
-    if (data.niche) query = query.contains("niche_tags", [data.niche]);
+    const rows = await d1All<Row>(
+      data.niche
+        ? `SELECT cp.user_id, cp.headline, cp.hero_image_url, cp.niche_tags, cp.verified,
+                  cp.average_rating, cp.total_sessions, cp.starting_price_kes,
+                  p.display_name, p.avatar_url, p.location
+           FROM creator_profiles cp
+           LEFT JOIN profiles p ON p.id = cp.user_id
+           WHERE cp.active = 1
+             AND EXISTS (SELECT 1 FROM json_each(cp.niche_tags) je WHERE je.value = ?)
+           ORDER BY cp.verified DESC, cp.average_rating DESC
+           LIMIT 60`
+        : `SELECT cp.user_id, cp.headline, cp.hero_image_url, cp.niche_tags, cp.verified,
+                  cp.average_rating, cp.total_sessions, cp.starting_price_kes,
+                  p.display_name, p.avatar_url, p.location
+           FROM creator_profiles cp
+           LEFT JOIN profiles p ON p.id = cp.user_id
+           WHERE cp.active = 1
+           ORDER BY cp.verified DESC, cp.average_rating DESC
+           LIMIT 60`,
+      data.niche ? [data.niche] : []
+    );
 
-    const { data: creators, error } = await query;
-    if (error) throw new Error(error.message);
-
-    const userIds = creators?.map((c) => c.user_id) ?? [];
-    if (userIds.length === 0) return { creators: [] as Array<any> };
-
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name, avatar_url, location")
-      .in("id", userIds);
-
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-    let merged = (creators ?? []).map((c) => {
-      const p = profileMap.get(c.user_id);
-      return {
-        user_id: c.user_id,
-        display_name: p?.display_name ?? "Creator",
-        avatar_url: p?.avatar_url ?? null,
-        location: p?.location ?? null,
-        headline: c.headline,
-        hero_image_url: c.hero_image_url,
-        niche_tags: c.niche_tags ?? [],
-        verified: c.verified,
-        average_rating: Number(c.average_rating) || 0,
-        total_sessions: c.total_sessions ?? 0,
-        starting_price_kes: c.starting_price_kes ?? 0,
-      };
-    });
+    let merged = rows.map((c) => ({
+      user_id: c.user_id,
+      display_name: c.display_name ?? "Creator",
+      avatar_url: c.avatar_url ?? null,
+      location: c.location ?? null,
+      headline: c.headline,
+      hero_image_url: c.hero_image_url ?? null,
+      niche_tags: (typeof c.niche_tags === "string" ? JSON.parse(c.niche_tags) : c.niche_tags ?? []) as string[],
+      verified: c.verified === 1,
+      average_rating: Number(c.average_rating) || 0,
+      total_sessions: c.total_sessions ?? 0,
+      starting_price_kes: c.starting_price_kes ?? 0,
+    }));
 
     if (data.search) {
       const q = data.search.toLowerCase();
-      merged = merged.filter((c) =>
-        c.display_name.toLowerCase().includes(q) ||
-        c.headline.toLowerCase().includes(q) ||
-        c.niche_tags.some((t) => t.toLowerCase().includes(q))
+      merged = merged.filter(
+        (c) =>
+          c.display_name.toLowerCase().includes(q) ||
+          c.headline.toLowerCase().includes(q) ||
+          c.niche_tags.some((t: string) => t.toLowerCase().includes(q))
       );
     }
 
@@ -69,96 +79,133 @@ export const listCreators = createServerFn({ method: "POST" })
 const GetInput = z.object({ creatorId: z.string().uuid() });
 
 export const getCreator = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => GetInput.parse(d))
+  .validator((d: unknown) => GetInput.parse(d))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { d1One, d1All } = await import("@/integrations/cloudflare/d1");
 
-    const { data: creator } = await supabaseAdmin
-      .from("creator_profiles")
-      .select("user_id, headline, long_bio, hero_image_url, niche_tags, verified, average_rating, total_sessions, starting_price_kes, active")
-      .eq("user_id", data.creatorId)
-      .maybeSingle();
+    type CreatorRow = {
+      user_id: string;
+      headline: string;
+      long_bio: string | null;
+      hero_image_url: string | null;
+      niche_tags: string;
+      verified: number;
+      average_rating: number;
+      total_sessions: number;
+      starting_price_kes: number;
+      active: number;
+      display_name: string | null;
+      avatar_url: string | null;
+      bio: string | null;
+      location: string | null;
+    };
 
-    if (!creator || !creator.active) return { creator: null };
+    const creator = await d1One<CreatorRow>(
+      `SELECT cp.user_id, cp.headline, cp.long_bio, cp.hero_image_url, cp.niche_tags, cp.verified,
+              cp.average_rating, cp.total_sessions, cp.starting_price_kes, cp.active,
+              p.display_name, p.avatar_url, p.bio, p.location
+       FROM creator_profiles cp
+       LEFT JOIN profiles p ON p.id = cp.user_id
+       WHERE cp.user_id = ? AND cp.active = 1`,
+      [data.creatorId]
+    );
+    if (!creator) return { creator: null };
 
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name, avatar_url, bio, location")
-      .eq("id", data.creatorId)
-      .maybeSingle();
+    const packages = await d1All(
+      `SELECT id, title, description, duration_minutes, price_kes, session_type, location
+       FROM session_packages
+       WHERE creator_id = ? AND active = 1
+       ORDER BY price_kes ASC`,
+      [data.creatorId]
+    );
 
-    const { data: packages } = await supabaseAdmin
-      .from("session_packages")
-      .select("id, title, description, duration_minutes, price_kes")
-      .eq("creator_id", data.creatorId)
-      .eq("active", true)
-      .order("price_kes", { ascending: true });
+    type ReviewRow = {
+      id: string;
+      rating: number;
+      comment: string | null;
+      created_at: string;
+      fan_id: string;
+      fan_name: string | null;
+      fan_avatar: string | null;
+    };
 
-    const { data: reviews } = await supabaseAdmin
-      .from("reviews")
-      .select("id, rating, comment, created_at, fan_id")
-      .eq("creator_id", data.creatorId)
-      .order("created_at", { ascending: false })
-      .limit(8);
-
-    const fanIds = (reviews ?? []).map((r) => r.fan_id);
-    const { data: fanProfiles } = fanIds.length
-      ? await supabaseAdmin.from("profiles").select("id, display_name, avatar_url").in("id", fanIds)
-      : { data: [] as Array<any> };
-    const fanMap = new Map((fanProfiles ?? []).map((f) => [f.id, f]));
+    const reviews = await d1All<ReviewRow>(
+      `SELECT r.id, r.rating, r.comment, r.created_at, r.fan_id,
+              p.display_name as fan_name, p.avatar_url as fan_avatar
+       FROM reviews r
+       LEFT JOIN profiles p ON p.id = r.fan_id
+       WHERE r.creator_id = ?
+       ORDER BY r.created_at DESC
+       LIMIT 8`,
+      [data.creatorId]
+    );
 
     return {
       creator: {
         user_id: creator.user_id,
-        display_name: profile?.display_name ?? "Creator",
-        avatar_url: profile?.avatar_url ?? null,
-        bio: profile?.bio ?? null,
-        location: profile?.location ?? null,
+        display_name: creator.display_name ?? "Creator",
+        avatar_url: creator.avatar_url ?? null,
+        bio: creator.bio ?? null,
+        location: creator.location ?? null,
         headline: creator.headline,
         long_bio: creator.long_bio,
         hero_image_url: creator.hero_image_url,
-        niche_tags: creator.niche_tags ?? [],
-        verified: creator.verified,
+        niche_tags: (typeof creator.niche_tags === "string"
+          ? JSON.parse(creator.niche_tags)
+          : creator.niche_tags ?? []) as string[],
+        verified: creator.verified === 1,
         average_rating: Number(creator.average_rating) || 0,
         total_sessions: creator.total_sessions ?? 0,
         starting_price_kes: creator.starting_price_kes ?? 0,
       },
-      packages: packages ?? [],
-      reviews: (reviews ?? []).map((r) => ({
-        ...r,
-        fan: fanMap.get(r.fan_id) ?? { display_name: "Fan", avatar_url: null },
+      packages: (packages ?? []) as any[],
+      reviews: reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        created_at: r.created_at,
+        fan_id: r.fan_id,
+        fan: { display_name: r.fan_name ?? "Fan", avatar_url: r.fan_avatar },
       })),
     };
   });
 
 export const getFeaturedCreators = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: creators } = await supabaseAdmin
-    .from("creator_profiles")
-    .select("user_id, headline, hero_image_url, niche_tags, verified, average_rating, total_sessions, starting_price_kes")
-    .eq("active", true)
-    .order("verified", { ascending: false })
-    .order("average_rating", { ascending: false })
-    .limit(8);
+  const { d1All } = await import("@/integrations/cloudflare/d1");
 
-  const ids = (creators ?? []).map((c) => c.user_id);
-  if (!ids.length) return { creators: [] };
+  type Row = {
+    user_id: string;
+    headline: string;
+    hero_image_url: string | null;
+    niche_tags: string;
+    verified: number;
+    average_rating: number;
+    total_sessions: number;
+    starting_price_kes: number;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
 
-  const { data: profiles } = await supabaseAdmin
-    .from("profiles")
-    .select("id, display_name, avatar_url")
-    .in("id", ids);
-  const map = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const rows = await d1All<Row>(
+    `SELECT cp.user_id, cp.headline, cp.hero_image_url, cp.niche_tags, cp.verified,
+            cp.average_rating, cp.total_sessions, cp.starting_price_kes,
+            p.display_name, p.avatar_url
+     FROM creator_profiles cp
+     LEFT JOIN profiles p ON p.id = cp.user_id
+     WHERE cp.active = 1
+     ORDER BY cp.verified DESC, cp.average_rating DESC
+     LIMIT 8`
+  );
 
   return {
-    creators: (creators ?? []).map((c) => ({
+    creators: rows.map((c) => ({
       user_id: c.user_id,
-      display_name: map.get(c.user_id)?.display_name ?? "Creator",
-      avatar_url: map.get(c.user_id)?.avatar_url ?? null,
+      display_name: c.display_name ?? "Creator",
+      avatar_url: c.avatar_url ?? null,
       headline: c.headline,
-      hero_image_url: c.hero_image_url,
-      niche_tags: c.niche_tags ?? [],
-      verified: c.verified,
+      hero_image_url: c.hero_image_url ?? null,
+      niche_tags: (typeof c.niche_tags === "string" ? JSON.parse(c.niche_tags) : c.niche_tags ?? []) as string[],
+      verified: c.verified === 1,
       average_rating: Number(c.average_rating) || 0,
       total_sessions: c.total_sessions ?? 0,
       starting_price_kes: c.starting_price_kes ?? 0,
