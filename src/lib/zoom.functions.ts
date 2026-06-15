@@ -4,7 +4,7 @@ import { requireAuth } from "@/integrations/cloudflare/auth-middleware";
 import { d1One, d1Run } from "@/integrations/cloudflare/d1";
 
 export const getZoomRoomCredentials = createServerFn({ method: "GET" })
-  .validator((d: unknown) => z.object({ bookingId: z.string().uuid() }).parse(d))
+  .inputValidator((d: unknown) => z.object({ bookingId: z.string().uuid() }).parse(d))
   .middleware([requireAuth])
   .handler(async ({ data, context }) => {
     const { userId } = context;

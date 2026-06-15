@@ -28,12 +28,19 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <img
-            src="/logo.png"
-            alt="CreatorConnect"
-            className="h-8 w-auto object-contain"
-          />
+        <Link to="/" className="flex items-center gap-2.5">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="cc-logo-g" x1="2" y1="34" x2="34" y2="2" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#e91e8c" />
+                <stop offset="100%" stopColor="#9333ea" />
+              </linearGradient>
+            </defs>
+            <rect width="36" height="36" rx="9" fill="url(#cc-logo-g)" />
+            <path d="M25.5 12.5a9.5 9.5 0 1 0 0 11" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
+            <path d="M22 15.5l4.2 2.5-4.2 2.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+          <span className="font-display text-base font-bold text-foreground">CreatorConnect</span>
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm font-medium md:flex">

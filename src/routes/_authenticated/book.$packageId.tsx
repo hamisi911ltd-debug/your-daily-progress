@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/book/$packageId")({
 });
 
 const SESSION_TYPE_INFO: Record<string, { icon: React.ReactNode; label: string; note: string }> = {
-  online:     { icon: <Video className="h-4 w-4" />,   label: "Online session",  note: "You'll join a Zoom room at the scheduled time." },
+  online:     { icon: <Video className="h-4 w-4" />,   label: "Online session",  note: "You'll join a private video room at the scheduled time." },
   "in-person":{ icon: <MapPin className="h-4 w-4" />,  label: "In-person",       note: "Meet at the location set by the creator." },
   hybrid:     { icon: <Layers className="h-4 w-4" />,  label: "Hybrid session",  note: "Choose online or in-person with the creator." },
 };
@@ -53,7 +53,7 @@ function BookPage() {
   });
   const payMut = useMutation({
     mutationFn: () => pay({ data: { bookingId: bookingId!, phone } }),
-    onSuccess: (r) => { setRef(r.mpesaReference); setStep("done"); toast.success("Payment received — Zoom room ready!"); },
+    onSuccess: (r) => { setRef(r.mpesaReference); setStep("done"); toast.success("Payment received — your video room is ready!"); },
     onError: (e: any) => toast.error(e?.message ?? "Payment failed"),
   });
 
@@ -142,7 +142,7 @@ function BookPage() {
             <p className="mt-3 rounded-xl bg-primary/10 p-3 text-sm font-medium text-primary flex items-center gap-2">
               {sessionTypeInfo.icon}
               {sessionType === "online" || sessionType === "hybrid"
-                ? "A Zoom room will be ready — join from My bookings at the scheduled time."
+                ? "Your private video room will be ready — join from My bookings at the scheduled time."
                 : location
                   ? `Meet at: ${location}`
                   : "Meeting location will be confirmed by the creator."}

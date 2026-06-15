@@ -9,7 +9,7 @@ const ListInput = z
   .partial();
 
 export const listCreators = createServerFn({ method: "POST" })
-  .validator((d: unknown) => ListInput.parse(d ?? {}))
+  .inputValidator((d: unknown) => ListInput.parse(d ?? {}))
   .handler(async ({ data }) => {
     const { d1All } = await import("@/integrations/cloudflare/d1");
 
@@ -79,7 +79,7 @@ export const listCreators = createServerFn({ method: "POST" })
 const GetInput = z.object({ creatorId: z.string().uuid() });
 
 export const getCreator = createServerFn({ method: "POST" })
-  .validator((d: unknown) => GetInput.parse(d))
+  .inputValidator((d: unknown) => GetInput.parse(d))
   .handler(async ({ data }) => {
     const { d1One, d1All } = await import("@/integrations/cloudflare/d1");
 

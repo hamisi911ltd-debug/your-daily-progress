@@ -1,11 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { getZoomRoomCredentials } from "@/lib/zoom.functions";
+import { getVideoRoom } from "@/lib/room.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { PhoneOff, Loader2, AlertCircle, Video, MapPin } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { PhoneOff, Loader2, AlertCircle, Video } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$bookingId")({
   head: () => ({ meta: [{ title: "Live room · CreatorConnect" }] }),
@@ -15,127 +14,98 @@ export const Route = createFileRoute("/_authenticated/room/$bookingId")({
 function Room() {
   const { bookingId } = Route.useParams();
   const { user } = useAuth();
-  const fetchCreds = useServerFn(getZoomRoomCredentials);
+  const fetchRoom = useServerFn(getVideoRoom);
 
-  const { data: creds, isLoading, error } = useQuery({
-    queryKey: ["zoom-creds", bookingId],
-    queryFn: () => fetchCreds({ data: { bookingId } }),
+  const { data: room, isLoading, error } = useQuery({
+    queryKey: ["video-room", bookingId],
+    queryFn: () => fetchRoom({ data: { bookingId } }),
     retry: false,
     staleTime: Infinity,
   });
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [joined, setJoined] = useState(false);
-  const [zoomError, setZoomError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!creds || !containerRef.current) return;
-
-    async function initZoom() {
-      try {
-        // Dynamic import keeps the heavy SDK out of SSR bundle
-        const mod = await import("@zoom/meetingsdk/embedded");
-        const ZoomMtgEmbedded = (mod as any).default ?? mod;
-        const client = ZoomMtgEmbedded.createClient();
-
-        await client.init({
-          zoomAppRoot: containerRef.current!,
-          language: "en-US",
-          customize: {
-            video: { popper: { disableDraggable: true } },
-          },
-        });
-
-        await client.join({
-          meetingNumber: creds!.meetingNumber,
-          signature: creds!.signature,
-          sdkKey: creds!.sdkKey,
-          userName:
-            user?.user_metadata?.full_name ||
-            user?.email?.split("@")[0] ||
-            "Guest",
-          userEmail: user?.email ?? "",
-          password: creds!.password,
-        });
-
-        setJoined(true);
-      } catch (err: any) {
-        setZoomError(err?.message ?? "Failed to connect to meeting room");
-      }
-    }
-
-    initZoom();
-  }, [creds, user]);
+  const displayName = encodeURIComponent(
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest"
+  );
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-secondary">
-        <div className="text-center text-secondary-foreground">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
           <p className="mt-3 font-display text-lg font-semibold">Preparing your room…</p>
+          <p className="mt-1 text-sm text-muted-foreground">Setting up a private video space for you.</p>
         </div>
       </div>
     );
   }
 
-  if (error || zoomError) {
+  if (error || !room) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-4 bg-secondary px-4 text-secondary-foreground">
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="font-display text-lg text-center">
-          {(error as Error)?.message ?? zoomError}
-        </p>
-        <Button asChild variant="outline" className="border-secondary-foreground/30 text-secondary-foreground hover:text-secondary-foreground">
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-5 px-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/15">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+        </div>
+        <div className="text-center">
+          <p className="font-display text-xl font-semibold">Cannot enter room</p>
+          <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+            {(error as Error)?.message ?? "Something went wrong. Please check your booking status."}
+          </p>
+        </div>
+        <Button asChild variant="outline">
           <Link to="/bookings">Back to bookings</Link>
         </Button>
       </div>
     );
   }
 
+  const jitsiSrc = [
+    `https://meet.jit.si/${room.roomName}`,
+    `#config.disableDeepLinking=true`,
+    `&config.prejoinPageEnabled=true`,
+    `&config.startWithVideoMuted=false`,
+    `&config.startWithAudioMuted=false`,
+    `&config.defaultRemoteDisplayName=Participant`,
+    `&userInfo.displayName=${displayName}`,
+    `&interfaceConfig.SHOW_JITSI_WATERMARK=false`,
+    `&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false`,
+  ].join("");
+
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-secondary text-secondary-foreground">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-accent">Live session</p>
-            <h1 className="font-display text-2xl font-bold">Room #{bookingId.slice(0, 8)}</h1>
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-background">
+      {/* Top bar */}
+      <div className="flex items-center justify-between border-b border-border/60 bg-card px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-brand">
+            <Video className="h-4 w-4 text-white" />
           </div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-destructive px-3 py-1 text-xs font-bold text-destructive-foreground">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-destructive-foreground" /> LIVE
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-primary">Live session</p>
+            <p className="font-display text-sm font-bold text-foreground">Room #{bookingId.slice(0, 8)}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden text-xs text-muted-foreground sm:block">
+            {room.role === "host" ? "You are the creator" : "You are the fan"} · Secure private room
           </span>
-        </div>
-
-        {/* Zoom container — SDK renders into this div */}
-        <div
-          ref={containerRef}
-          id="meetingSDKElement"
-          className="w-full overflow-hidden rounded-3xl bg-secondary-foreground/5 shadow-glow"
-          style={{ minHeight: 580 }}
-        >
-          {!joined && !zoomError && (
-            <div className="flex min-h-[580px] items-center justify-center">
-              <div className="text-center text-secondary-foreground/70">
-                <Video className="mx-auto h-12 w-12" />
-                <p className="mt-3 font-display text-lg font-bold">Connecting to Zoom…</p>
-                <p className="mt-1 text-sm">Please allow camera and microphone access.</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-3">
-          <Button asChild variant="destructive" size="sm" className="rounded-full px-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-xs font-bold text-red-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+            LIVE
+          </span>
+          <Button asChild variant="destructive" size="sm" className="rounded-full">
             <Link to="/bookings">
-              <PhoneOff className="mr-2 h-4 w-4" /> Leave meeting
+              <PhoneOff className="mr-1.5 h-3.5 w-3.5" /> Leave
             </Link>
           </Button>
         </div>
-
-        <p className="mt-3 text-center text-xs text-secondary-foreground/50">
-          Powered by Zoom · Session recorded only with both parties' consent.
-        </p>
       </div>
+
+      {/* Jitsi iframe — takes all remaining height */}
+      <iframe
+        src={jitsiSrc}
+        allow="camera; microphone; fullscreen; display-capture; autoplay"
+        className="flex-1 w-full border-0"
+        title="CreatorConnect video session"
+      />
     </div>
   );
 }

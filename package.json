@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "seed": "node scripts/seed.js",
     "cf:secrets": "node scripts/set-secrets.js",
     "lint": "eslint .",
     "format": "prettier --write ."
