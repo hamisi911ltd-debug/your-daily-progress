@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/become-creator")({
-  head: () => ({ meta: [{ title: "Become a creator · CreatorConnect" }] }),
+  head: () => ({ meta: [{ title: "Become a creator · Fanmeeet" }] }),
   component: BecomeCreatorPage,
 });
 

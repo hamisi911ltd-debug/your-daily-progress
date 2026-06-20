@@ -16,9 +16,9 @@ const browseQuery = queryOptions({
 export const Route = createFileRoute("/browse")({
   head: () => ({
     meta: [
-      { title: "Browse creators · CreatorConnect" },
+      { title: "Browse creators · Fanmeeet" },
       { name: "description", content: "Browse and book Kenyan creators for live 1:1 video sessions." },
-      { property: "og:title", content: "Browse creators · CreatorConnect" },
+      { property: "og:title", content: "Browse creators · Fanmeeet" },
       { property: "og:description", content: "Find your favourite Kenyan creator and book a private session." },
     ],
   }),

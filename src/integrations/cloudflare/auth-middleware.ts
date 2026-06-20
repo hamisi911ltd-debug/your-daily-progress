@@ -19,6 +19,7 @@ export const requireAuth = createMiddleware({ type: "function" }).server(
         userId: claims.sub,
         email: claims.email,
         name: claims.name,
+        roles: claims.roles ?? [],
       },
     });
   }

@@ -12,7 +12,7 @@ import { Smartphone, ShieldCheck, Video, MapPin, Layers } from "lucide-react";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/book/$packageId")({
-  head: () => ({ meta: [{ title: "Book session · CreatorConnect" }] }),
+  head: () => ({ meta: [{ title: "Book session · Fanmeeet" }] }),
   validateSearch: z.object({
     sessionType: z.enum(["online", "in-person", "hybrid"]).optional(),
     location: z.string().optional(),

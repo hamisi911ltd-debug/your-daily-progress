@@ -4,9 +4,13 @@
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY NOT NULL,
   email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT NOT NULL DEFAULT '',
   display_name TEXT NOT NULL DEFAULT '',
   avatar_url TEXT,
+  phone_number TEXT,
+  google_id TEXT,
+  facebook_id TEXT,
+  tiktok_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -16,7 +20,22 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar_url TEXT,
   bio TEXT,
   location TEXT,
+  phone_number TEXT,
+  instagram_url TEXT,
+  tiktok_url TEXT,
+  snapchat_url TEXT,
+  facebook_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id TEXT PRIMARY KEY NOT NULL,
+  user_id TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS user_roles (
@@ -40,6 +59,15 @@ CREATE TABLE IF NOT EXISTS creator_profiles (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS creator_gallery (
+  id TEXT PRIMARY KEY NOT NULL,
+  creator_id TEXT NOT NULL,
+  image_url TEXT NOT NULL,
+  caption TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS session_packages (
@@ -100,3 +128,4 @@ CREATE INDEX IF NOT EXISTS idx_session_packages_creator ON session_packages(crea
 CREATE INDEX IF NOT EXISTS idx_bookings_fan ON bookings(fan_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_creator ON bookings(creator_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_creator ON reviews(creator_id);
+CREATE INDEX IF NOT EXISTS idx_creator_gallery ON creator_gallery(creator_id, created_at);

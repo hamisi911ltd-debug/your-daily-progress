@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Toaster } from "@/components/ui/sonner";
+import { Chatbot } from "@/components/Chatbot";
 
 function NotFoundComponent() {
   return (
@@ -64,7 +65,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CreatorConnect — Book live sessions with your favourite creators" },
+      { title: "Fanmeeet — Book live sessions with your favourite creators" },
       {
         name: "description",
         content:
@@ -72,7 +73,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "CreatorConnect — Book live sessions with your favourite creators",
+        content: "Fanmeeet — Book live sessions with your favourite creators",
       },
       {
         property: "og:description",
@@ -85,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "CreatorConnect" },
+      { name: "apple-mobile-web-app-title", content: "Fanmeeet" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -100,7 +101,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.json" },
-      { rel: "apple-touch-icon", href: "/logo.png" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "icon", type: "image/png", href: "/logo-mark.png" },
+      { rel: "apple-touch-icon", href: "/logo-mark.png" },
     ],
   }),
   shellComponent: RootShell,
@@ -143,6 +146,7 @@ function RootComponent() {
         <Footer />
       </div>
       <Toaster richColors position="top-right" />
+      <Chatbot />
     </QueryClientProvider>
   );
 }

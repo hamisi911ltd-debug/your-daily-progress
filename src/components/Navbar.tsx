@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, CalendarCheck2 } from "lucide-react";
+import { LogOut, LayoutDashboard, CalendarCheck2, User, ShieldAlert } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ export function Navbar() {
     navigate({ to: "/" });
   }
 
+  const isAdmin = user?.roles?.includes("admin") ?? false;
   const initials = (user?.user_metadata?.full_name || user?.email || "U")
     .toString()
     .slice(0, 2)
@@ -29,18 +30,8 @@ export function Navbar() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2.5">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs>
-              <linearGradient id="cc-logo-g" x1="2" y1="34" x2="34" y2="2" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#e91e8c" />
-                <stop offset="100%" stopColor="#9333ea" />
-              </linearGradient>
-            </defs>
-            <rect width="36" height="36" rx="9" fill="url(#cc-logo-g)" />
-            <path d="M25.5 12.5a9.5 9.5 0 1 0 0 11" stroke="white" strokeWidth="3" strokeLinecap="round" fill="none" />
-            <path d="M22 15.5l4.2 2.5-4.2 2.5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
-          <span className="font-display text-base font-bold text-foreground">CreatorConnect</span>
+          <img src="/logo-mark.png" alt="Fanmeeet" className="h-9 w-9 rounded-lg object-cover" />
+          <span className="font-display text-base font-bold text-foreground">Fanmeeet</span>
         </Link>
 
         <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
@@ -65,7 +56,7 @@ export function Navbar() {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 rounded-full border border-border/60 bg-card p-1 pr-3 shadow-card transition hover:border-primary/50">
                   <Avatar className="h-7 w-7">
-                    <AvatarImage src={user.user_metadata?.avatar_url} />
+                    <AvatarImage src={user.user_metadata?.avatar_url} className="object-cover" />
                     <AvatarFallback className="bg-secondary text-xs text-secondary-foreground">
                       {initials}
                     </AvatarFallback>
@@ -73,9 +64,17 @@ export function Navbar() {
                   <span className="hidden text-sm font-medium sm:inline">
                     {user.user_metadata?.full_name?.split(" ")[0] || user.email?.split("@")[0]}
                   </span>
+                  {isAdmin && (
+                    <ShieldAlert className="h-3.5 w-3.5 text-red-500" aria-label="Admin" />
+                  )}
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link to="/profile">
+                    <User className="mr-2 h-4 w-4" /> My profile
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/bookings">
                     <CalendarCheck2 className="mr-2 h-4 w-4" /> My bookings
@@ -86,6 +85,17 @@ export function Navbar() {
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Creator dashboard
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <ShieldAlert className="mr-2 h-4 w-4 text-red-500" />
+                        <span className="font-semibold text-red-600">Admin dashboard</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" /> Sign out

@@ -10,7 +10,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/bookings")({
-  head: () => ({ meta: [{ title: "My bookings · CreatorConnect" }] }),
+  head: () => ({ meta: [{ title: "My bookings · Fanmeeet" }] }),
   component: BookingsPage,
 });
 

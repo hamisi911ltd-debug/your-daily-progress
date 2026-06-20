@@ -18,9 +18,9 @@ const featuredQuery = queryOptions({
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CreatorConnect — Book live 1:1 sessions with your favourite Kenyan creators" },
+      { title: "Fanmeeet — Book live 1:1 sessions with your favourite Kenyan creators" },
       { name: "description", content: "Kenya's first marketplace to book private live video sessions with top creators, coaches & influencers. Pay with M-Pesa. No apps needed." },
-      { property: "og:title", content: "CreatorConnect — Book live sessions with your favourite creators" },
+      { property: "og:title", content: "Fanmeeet — Book live sessions with your favourite creators" },
       { property: "og:description", content: "Book private 1:1 video sessions with Kenya's top creators. Pay with M-Pesa." },
     ],
   }),
@@ -76,7 +76,7 @@ const TESTIMONIALS = [
     rating: 5,
   },
   {
-    quote: "As a huge music fan, I never thought I'd get to actually sit with my favourite producer and learn about the industry. CreatorConnect made it happen in 20 minutes.",
+    quote: "As a huge music fan, I never thought I'd get to actually sit with my favourite producer and learn about the industry. Fanmeeet made it happen in 20 minutes.",
     name: "Brian M.",
     role: "Aspiring musician · Mombasa",
     avatar: img("1506794778202-cad84cf45f1d", 80, 80),
@@ -128,7 +128,7 @@ function Index() {
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-white/75">
-              CreatorConnect is Kenya's first marketplace where fans book private 1:1 live video sessions
+              Fanmeeet is Kenya's first marketplace where fans book private 1:1 live video sessions
               with the coaches, musicians, marketers and influencers they actually follow.
               Pay with M-Pesa. No extra apps. Just real connection.
             </p>
@@ -238,13 +238,13 @@ function Index() {
         <div className="grid items-center gap-16 lg:grid-cols-2">
           {/* Text */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">What is CreatorConnect?</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">What is Fanmeeet?</p>
             <h2 className="mt-3 font-display text-4xl font-bold leading-tight sm:text-5xl">
               The direct line between fans and the{" "}
               <span className="text-gradient">creators they love.</span>
             </h2>
             <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-              CreatorConnect is Kenya's first marketplace for booking private, paid live video sessions with your favourite creators.
+              Fanmeeet is Kenya's first marketplace for booking private, paid live video sessions with your favourite creators.
             </p>
             <p className="mt-4 leading-relaxed text-muted-foreground">
               Whether you want business advice from a top marketer, vocal coaching from a musician you admire,

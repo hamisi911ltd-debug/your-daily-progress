@@ -74,26 +74,6 @@ export const mockMpesaPay = createServerFn({ method: "POST" })
     );
     if (!changes) throw new Error("Booking not found");
 
-    if (process.env.ZOOM_ACCOUNT_ID) {
-      try {
-        const booking = await d1One<{ duration_minutes: number }>(
-          "SELECT duration_minutes FROM bookings WHERE id = ?",
-          [data.bookingId]
-        );
-        const { createZoomMeeting } = await import("@/lib/zoom.server");
-        const meeting = await createZoomMeeting(
-          "CreatorConnect Live Session",
-          booking?.duration_minutes ?? 60
-        );
-        await d1Run(
-          "UPDATE bookings SET zoom_meeting_id = ?, zoom_meeting_password = ? WHERE id = ?",
-          [meeting.meetingId, meeting.password, data.bookingId]
-        );
-      } catch {
-        // Zoom failure must never roll back a successful payment
-      }
-    }
-
     return { mpesaReference: ref };
   });
 

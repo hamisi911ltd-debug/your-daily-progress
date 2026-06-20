@@ -1,16 +1,16 @@
 {
-  "name": "CreatorConnect",
-  "short_name": "CreatorConnect",
+  "name": "Fanmeeet",
+  "short_name": "Fanmeeet",
   "description": "Book live 1:1 sessions with Kenyan creators. Pay with M-Pesa.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5fbf5",
-  "theme_color": "#16a34a",
+  "background_color": "#05040a",
+  "theme_color": "#e91e8c",
   "orientation": "portrait-primary",
   "categories": ["entertainment", "social"],
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/logo-mark.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

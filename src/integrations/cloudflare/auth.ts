@@ -8,6 +8,7 @@ export interface JWTPayload {
   email: string;
   name: string;
   avatar_url?: string;
+  roles: string[];
   exp: number;
   iat: number;
 }
@@ -15,6 +16,7 @@ export interface JWTPayload {
 export interface AuthUser {
   id: string;
   email: string;
+  roles: string[];
   user_metadata: { full_name?: string; avatar_url?: string };
 }
 
@@ -22,6 +24,7 @@ export function jwtToUser(payload: JWTPayload): AuthUser {
   return {
     id: payload.sub,
     email: payload.email,
+    roles: payload.roles ?? [],
     user_metadata: { full_name: payload.name, avatar_url: payload.avatar_url },
   };
 }
@@ -49,7 +52,6 @@ export function getTokenPayload(): JWTPayload | null {
   if (!token) return null;
   try {
     const [, body] = token.split(".");
-    // base64url → base64
     const b64 = body.replace(/-/g, "+").replace(/_/g, "/");
     const padded = b64.padEnd(Math.ceil(b64.length / 4) * 4, "=");
     const payload = JSON.parse(atob(padded)) as JWTPayload;

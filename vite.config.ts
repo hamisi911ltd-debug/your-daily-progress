@@ -12,13 +12,4 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  vite: {
-    // Keep Zoom Meeting SDK out of the SSR bundle — it's client-only via dynamic import
-    ssr: {
-      external: ["@zoom/meetingsdk"],
-    },
-    optimizeDeps: {
-      exclude: ["@zoom/meetingsdk"],
-    },
-  },
 });

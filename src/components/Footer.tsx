@@ -7,8 +7,8 @@ export function Footer() {
         <div className="md:col-span-2">
           <img
             src="/logo.png"
-            alt="CreatorConnect"
-            className="h-10 w-auto object-contain brightness-0 invert"
+            alt="Fanmeeet"
+            className="h-14 w-auto rounded-xl object-contain"
           />
           <p className="mt-3 max-w-sm text-sm text-secondary-foreground/70">
             Kenya's marketplace for booking private live video sessions with the creators you love.
@@ -38,12 +38,12 @@ export function Footer() {
           </p>
           <ul className="space-y-2 text-sm">
             <li>Nairobi, Kenya</li>
-            <li>hello@creatorconnect.co.ke</li>
+            <li>hello@fanmeeet.com</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-secondary-foreground/10 py-4 text-center text-xs text-secondary-foreground/50">
-        © 2026 CreatorConnect. All rights reserved.
+        © 2026 Fanmeeet. All rights reserved.
       </div>
     </footer>
   );

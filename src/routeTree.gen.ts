@@ -10,11 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CreatorsCreatorIdRouteImport } from './routes/creators.$creatorId'
+import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedCreatorDashboardRouteImport } from './routes/_authenticated/creator-dashboard'
 import { Route as AuthenticatedBookingsRouteImport } from './routes/_authenticated/bookings'
 import { Route as AuthenticatedBecomeCreatorRouteImport } from './routes/_authenticated/become-creator'
@@ -26,6 +29,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BrowseRoute = BrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
@@ -34,6 +42,11 @@ const BrowseRoute = BrowseRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -49,6 +62,11 @@ const CreatorsCreatorIdRoute = CreatorsCreatorIdRouteImport.update({
   id: '/creators/$creatorId',
   path: '/creators/$creatorId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCreatorDashboardRoute =
   AuthenticatedCreatorDashboardRouteImport.update({
@@ -82,24 +100,30 @@ const AuthenticatedBookPackageIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/become-creator': typeof AuthenticatedBecomeCreatorRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/creators/$creatorId': typeof CreatorsCreatorIdRoute
   '/book/$packageId': typeof AuthenticatedBookPackageIdRoute
   '/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/become-creator': typeof AuthenticatedBecomeCreatorRoute
   '/bookings': typeof AuthenticatedBookingsRoute
   '/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/profile': typeof AuthenticatedProfileRoute
   '/creators/$creatorId': typeof CreatorsCreatorIdRoute
   '/book/$packageId': typeof AuthenticatedBookPackageIdRoute
   '/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
@@ -108,12 +132,15 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/become-creator': typeof AuthenticatedBecomeCreatorRoute
   '/_authenticated/bookings': typeof AuthenticatedBookingsRoute
   '/_authenticated/creator-dashboard': typeof AuthenticatedCreatorDashboardRoute
+  '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/creators/$creatorId': typeof CreatorsCreatorIdRoute
   '/_authenticated/book/$packageId': typeof AuthenticatedBookPackageIdRoute
   '/_authenticated/room/$bookingId': typeof AuthenticatedRoomBookingIdRoute
@@ -122,24 +149,30 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/browse'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/become-creator'
     | '/bookings'
     | '/creator-dashboard'
+    | '/profile'
     | '/creators/$creatorId'
     | '/book/$packageId'
     | '/room/$bookingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/auth'
     | '/browse'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/become-creator'
     | '/bookings'
     | '/creator-dashboard'
+    | '/profile'
     | '/creators/$creatorId'
     | '/book/$packageId'
     | '/room/$bookingId'
@@ -147,12 +180,15 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/admin'
     | '/auth'
     | '/browse'
+    | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/become-creator'
     | '/_authenticated/bookings'
     | '/_authenticated/creator-dashboard'
+    | '/_authenticated/profile'
     | '/creators/$creatorId'
     | '/_authenticated/book/$packageId'
     | '/_authenticated/room/$bookingId'
@@ -161,8 +197,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CreatorsCreatorIdRoute: typeof CreatorsCreatorIdRoute
 }
@@ -174,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/browse': {
@@ -188,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -210,6 +262,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/creators/$creatorId'
       preLoaderRoute: typeof CreatorsCreatorIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/profile': {
+      id: '/_authenticated/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/creator-dashboard': {
       id: '/_authenticated/creator-dashboard'
@@ -253,6 +312,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBecomeCreatorRoute: typeof AuthenticatedBecomeCreatorRoute
   AuthenticatedBookingsRoute: typeof AuthenticatedBookingsRoute
   AuthenticatedCreatorDashboardRoute: typeof AuthenticatedCreatorDashboardRoute
+  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedBookPackageIdRoute: typeof AuthenticatedBookPackageIdRoute
   AuthenticatedRoomBookingIdRoute: typeof AuthenticatedRoomBookingIdRoute
 }
@@ -261,6 +321,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBecomeCreatorRoute: AuthenticatedBecomeCreatorRoute,
   AuthenticatedBookingsRoute: AuthenticatedBookingsRoute,
   AuthenticatedCreatorDashboardRoute: AuthenticatedCreatorDashboardRoute,
+  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedBookPackageIdRoute: AuthenticatedBookPackageIdRoute,
   AuthenticatedRoomBookingIdRoute: AuthenticatedRoomBookingIdRoute,
 }
@@ -271,8 +332,10 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CreatorsCreatorIdRoute: CreatorsCreatorIdRoute,
 }

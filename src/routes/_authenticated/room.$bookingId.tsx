@@ -1,20 +1,56 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { getVideoRoom } from "@/lib/room.functions";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { PhoneOff, Loader2, AlertCircle, Video } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$bookingId")({
-  head: () => ({ meta: [{ title: "Live room · CreatorConnect" }] }),
+  head: () => ({ meta: [{ title: "Live room · Fanmeeet" }] }),
   component: Room,
 });
+
+const JITSI_DOMAIN = "meet.jit.si";
+const JITSI_SCRIPT_SRC = `https://${JITSI_DOMAIN}/external_api.js`;
+
+declare global {
+  interface Window {
+    JitsiMeetExternalAPI?: new (domain: string, options: Record<string, unknown>) => JitsiMeetAPI;
+  }
+}
+
+interface JitsiMeetAPI {
+  addEventListener(event: string, listener: (...args: unknown[]) => void): void;
+  executeCommand(command: string, ...args: unknown[]): void;
+  dispose(): void;
+}
+
+let jitsiScriptPromise: Promise<void> | null = null;
+
+function loadJitsiScript(): Promise<void> {
+  if (window.JitsiMeetExternalAPI) return Promise.resolve();
+  if (jitsiScriptPromise) return jitsiScriptPromise;
+
+  jitsiScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = JITSI_SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load the video engine. Check your connection."));
+    document.head.appendChild(script);
+  });
+  return jitsiScriptPromise;
+}
 
 function Room() {
   const { bookingId } = Route.useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const fetchRoom = useServerFn(getVideoRoom);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const apiRef = useRef<JitsiMeetAPI | null>(null);
 
   const { data: room, isLoading, error } = useQuery({
     queryKey: ["video-room", bookingId],
@@ -23,9 +59,91 @@ function Room() {
     staleTime: Infinity,
   });
 
-  const displayName = encodeURIComponent(
-    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest"
-  );
+  const displayName =
+    user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Guest";
+
+  useEffect(() => {
+    if (!room || !containerRef.current) return;
+    let disposed = false;
+
+    loadJitsiScript()
+      .then(() => {
+        if (disposed || !containerRef.current || !window.JitsiMeetExternalAPI) return;
+
+        const api = new window.JitsiMeetExternalAPI(JITSI_DOMAIN, {
+          roomName: room.roomName,
+          parentNode: containerRef.current,
+          width: "100%",
+          height: "100%",
+          userInfo: { displayName },
+          configOverwrite: {
+            disableDeepLinking: true,
+            prejoinPageEnabled: true,
+            startWithVideoMuted: false,
+            startWithAudioMuted: false,
+            enableWelcomePage: false,
+            enableClosePage: false,
+            disableInviteFunctions: true,
+            doNotStoreRoom: true,
+            hideConferenceSubject: true,
+            disableAddingBackgroundImage: true,
+            disablePolls: true,
+            disableReactions: false,
+            disableSelfView: false,
+            // Two-party calls route peer-to-peer instead of through the relay server — the
+            // single biggest lever for cutting latency/lag on a free shared Jitsi deployment.
+            p2p: { enabled: true },
+            channelLastN: -1,
+            resolution: 720,
+            constraints: {
+              video: { height: { ideal: 720, max: 720, min: 240 } },
+            },
+            disableAudioLevels: true,
+            enableNoisyMicDetection: false,
+          },
+          interfaceConfigOverwrite: {
+            APP_NAME: "Fanmeeet",
+            NATIVE_APP_NAME: "Fanmeeet",
+            PROVIDER_NAME: "Fanmeeet",
+            SHOW_JITSI_WATERMARK: false,
+            SHOW_WATERMARK_FOR_GUESTS: false,
+            SHOW_BRAND_WATERMARK: false,
+            SHOW_POWERED_BY: false,
+            MOBILE_APP_PROMO: false,
+            HIDE_INVITE_MORE_HEADER: true,
+            DISPLAY_WELCOME_PAGE_CONTENT: false,
+            DEFAULT_BACKGROUND: "#05040a",
+            TOOLBAR_BUTTONS: [
+              "microphone",
+              "camera",
+              "desktop",
+              "fullscreen",
+              "fodeviceselection",
+              "chat",
+              "raisehand",
+              "tileview",
+              "select-background",
+              "settings",
+              "hangup",
+            ],
+            SETTINGS_SECTIONS: ["devices", "profile"],
+          },
+        });
+
+        apiRef.current = api;
+        api.addEventListener("readyToClose", () => navigate({ to: "/bookings" }));
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    return () => {
+      disposed = true;
+      apiRef.current?.dispose();
+      apiRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room?.roomName]);
 
   if (isLoading) {
     return (
@@ -58,18 +176,6 @@ function Room() {
     );
   }
 
-  const jitsiSrc = [
-    `https://meet.jit.si/${room.roomName}`,
-    `#config.disableDeepLinking=true`,
-    `&config.prejoinPageEnabled=true`,
-    `&config.startWithVideoMuted=false`,
-    `&config.startWithAudioMuted=false`,
-    `&config.defaultRemoteDisplayName=Participant`,
-    `&userInfo.displayName=${displayName}`,
-    `&interfaceConfig.SHOW_JITSI_WATERMARK=false`,
-    `&interfaceConfig.SHOW_WATERMARK_FOR_GUESTS=false`,
-  ].join("");
-
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col bg-background">
       {/* Top bar */}
@@ -99,13 +205,8 @@ function Room() {
         </div>
       </div>
 
-      {/* Jitsi iframe — takes all remaining height */}
-      <iframe
-        src={jitsiSrc}
-        allow="camera; microphone; fullscreen; display-capture; autoplay"
-        className="flex-1 w-full border-0"
-        title="CreatorConnect video session"
-      />
+      {/* Jitsi mounts directly into this node via the IFrame API */}
+      <div ref={containerRef} className="flex-1 w-full" />
     </div>
   );
 }

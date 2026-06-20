@@ -15,14 +15,9 @@ const secrets = [
   { name: "CF_D1_DATABASE_ID",  label: "D1 Database ID",        required: true },
   { name: "CF_API_TOKEN",       label: "Cloudflare API Token (D1:Edit permission)", required: true },
   { name: "JWT_SECRET",         label: "JWT Secret (run: openssl rand -hex 32)", required: true },
-  { name: "ZOOM_ACCOUNT_ID",    label: "Zoom Account ID (optional, press Enter to skip)", required: false },
-  { name: "ZOOM_CLIENT_ID",     label: "Zoom Client ID (optional)", required: false },
-  { name: "ZOOM_CLIENT_SECRET", label: "Zoom Client Secret (optional)", required: false },
-  { name: "ZOOM_SDK_KEY",       label: "Zoom SDK Key (optional)", required: false },
-  { name: "ZOOM_SDK_SECRET",    label: "Zoom SDK Secret (optional)", required: false },
 ];
 
-console.log("\n🔐 CreatorConnect — Cloudflare Secrets Setup\n");
+console.log("\n🔐 Fanmeeet — Cloudflare Secrets Setup\n");
 
 for (const secret of secrets) {
   const value = await ask(`  ${secret.label}: `);

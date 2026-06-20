@@ -82,29 +82,33 @@ async function restApiQuery<T extends D1Row>(sql: string, params?: unknown[]): P
   return json.result[0];
 }
 
-async function localSqliteQuery<T extends D1Row>(sql: string, params?: unknown[]): Promise<D1QueryResult<T>> {
+let cachedLocalDb: import("node:sqlite").DatabaseSync | null = null;
+
+async function getLocalDb() {
+  if (cachedLocalDb) return cachedLocalDb;
   const { DatabaseSync } = await import("node:sqlite");
   const { mkdirSync, existsSync } = await import("node:fs");
   const { join } = await import("node:path");
   const dir = join(process.cwd(), ".dev-data");
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const db = new DatabaseSync(join(dir, "creatorconnect.db"));
-  try {
-    const upper = sql.trim().toUpperCase();
-    const stmt = db.prepare(sql);
-    if (upper.startsWith("SELECT") || upper.startsWith("WITH")) {
-      const results = stmt.all(...(params ?? [])) as unknown as T[];
-      return { results, meta: { ...EMPTY_META, rows_read: results.length }, success: true };
-    }
-    const info = stmt.run(...(params ?? [])) as unknown as { changes: number; lastInsertRowid: number };
-    return {
-      results: [] as T[],
-      meta: { ...EMPTY_META, changes: info.changes ?? 0, last_row_id: info.lastInsertRowid ?? null, changed_db: true },
-      success: true,
-    };
-  } finally {
-    db.close();
+  cachedLocalDb = new DatabaseSync(join(dir, "creatorconnect.db"));
+  return cachedLocalDb;
+}
+
+async function localSqliteQuery<T extends D1Row>(sql: string, params?: unknown[]): Promise<D1QueryResult<T>> {
+  const db = await getLocalDb();
+  const upper = sql.trim().toUpperCase();
+  const stmt = db.prepare(sql);
+  if (upper.startsWith("SELECT") || upper.startsWith("WITH")) {
+    const results = stmt.all(...(params ?? [])) as unknown as T[];
+    return { results, meta: { ...EMPTY_META, rows_read: results.length }, success: true };
   }
+  const info = stmt.run(...(params ?? [])) as unknown as { changes: number; lastInsertRowid: number };
+  return {
+    results: [] as T[],
+    meta: { ...EMPTY_META, changes: info.changes ?? 0, last_row_id: info.lastInsertRowid ?? null, changed_db: true },
+    success: true,
+  };
 }
 
 async function d1Query<T extends D1Row = D1Row>(sql: string, params?: unknown[]): Promise<D1QueryResult<T>> {

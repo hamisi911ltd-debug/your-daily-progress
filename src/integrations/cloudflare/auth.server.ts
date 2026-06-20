@@ -8,7 +8,8 @@ function jwtSecret(): string {
   return s;
 }
 
-export function signJWT(payload: Omit<JWTPayload, "iat" | "exp">): string {
+export function signJWT(payload: Omit<JWTPayload, "iat" | "exp"> & { roles?: string[] }): string {
+  (payload as any).roles = payload.roles ?? [];
   const now = Math.floor(Date.now() / 1000);
   const claims: JWTPayload = { ...payload, iat: now, exp: now + 60 * 60 * 24 * 7 };
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
