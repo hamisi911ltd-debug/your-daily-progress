@@ -15,6 +15,8 @@ const secrets = [
   { name: "CF_D1_DATABASE_ID",  label: "D1 Database ID",        required: true },
   { name: "CF_API_TOKEN",       label: "Cloudflare API Token (D1:Edit permission)", required: true },
   { name: "JWT_SECRET",         label: "JWT Secret (run: openssl rand -hex 32)", required: true },
+  { name: "CF_TURN_KEY_ID",     label: "Cloudflare Realtime TURN Key ID (optional — dash.cloudflare.com > Calls; free up to 1,000GB/mo)", required: false },
+  { name: "CF_TURN_API_TOKEN",  label: "Cloudflare Realtime TURN Key API Token (optional, pairs with the Key ID above)", required: false },
   { name: "GOOGLE_CLIENT_ID",     label: "Google OAuth Client ID (optional, press Enter to skip)", required: false },
   { name: "GOOGLE_CLIENT_SECRET", label: "Google OAuth Client Secret (optional)", required: false },
   { name: "FACEBOOK_APP_ID",      label: "Facebook App ID (optional)", required: false },

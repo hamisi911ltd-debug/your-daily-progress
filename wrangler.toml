@@ -12,6 +12,14 @@ binding = "DB"
 database_name = "creatorconnect"
 database_id = "0bdf02e5-7bca-4130-a5ad-bb7e6f4e93e9"
 
+[[durable_objects.bindings]]
+name = "SIGNAL_ROOM"
+class_name = "SignalingRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SignalingRoom"]
+
 [assets]
 directory = "dist/client"
 binding = "ASSETS"

@@ -43,7 +43,7 @@ const PackageInput = z.object({
   description: z.string().trim().max(500).optional(),
   durationMinutes: z.number().int().min(10).max(240),
   priceKes: z.number().int().min(100).max(500_000),
-  // Every session is a live Jitsi video call now — in-person/hybrid packages
+  // Every session is a live video call now — in-person/hybrid packages
   // are no longer offered, so this is always "online" regardless of input.
   active: z.boolean().optional(),
 });

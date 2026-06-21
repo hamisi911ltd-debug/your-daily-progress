@@ -2,6 +2,12 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleSignal } from "./integrations/cloudflare/signal-handler";
+
+// Re-exported so wrangler's `durable_objects.bindings` (class_name = "SignalingRoom")
+// resolves against this same Worker script — this file is the literal build entry
+// (see vite.config.ts tanstackStart.server.entry), not nitro's generated one.
+export { SignalingRoom } from "./integrations/cloudflare/signaling-room";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -48,6 +54,11 @@ export default {
     // fallbacks and breaks in production.
     (globalThis as { __env__?: unknown }).__env__ = env;
     try {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/signal/")) {
+        return await handleSignal(request, env, url);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

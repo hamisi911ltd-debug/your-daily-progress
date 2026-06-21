@@ -12,4 +12,11 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // "cloudflare:workers" (used by signaling-room.ts's DurableObject base class) is a
+    // runtime-provided built-in on Workers — Rollup can't resolve it locally, so it must
+    // stay an external/unbundled import rather than be inlined. (Separately, `npm run build`
+    // also runs scripts/patch-server-bundle.js after this — see that file for why.)
+    build: { rollupOptions: { external: ["cloudflare:workers"] } },
+  },
 });
