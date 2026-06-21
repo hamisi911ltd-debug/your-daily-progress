@@ -39,6 +39,14 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Nitro's own Cloudflare entry sets this so bindings (D1, etc.) are reachable
+    // off the request's async context — see
+    // node_modules/nitro/dist/presets/cloudflare/runtime/_module-handler.mjs.
+    // This file replaces that entry (see vite.config.ts tanstackStart.server.entry)
+    // to wrap SSR errors, so we have to set it ourselves or every binding lookup
+    // in src/integrations/cloudflare/d1.ts silently falls through to the dev-only
+    // fallbacks and breaks in production.
+    (globalThis as { __env__?: unknown }).__env__ = env;
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

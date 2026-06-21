@@ -28,10 +28,12 @@ import {
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional(),
   returnTo: z.string().optional(),
-  google_code: z.string().optional(),
-  google_state: z.string().optional(),
-  facebook_code: z.string().optional(),
-  tiktok_code: z.string().optional(),
+  // Google, Facebook and TikTok all redirect back to this same /auth page with
+  // generic OAuth2 "code"/"state" params — the provider is resolved client-side
+  // by matching `state` against whichever `<provider>_oauth_state` was stashed
+  // in sessionStorage when the flow was started (see startOAuth below).
+  code: z.string().optional(),
+  state: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -253,7 +255,7 @@ function SocialButton({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function AuthPage() {
-  const { mode, returnTo, google_code, google_state, facebook_code, tiktok_code } = Route.useSearch();
+  const { mode, returnTo, code, state: oauthState } = Route.useSearch();
   const navigate = useNavigate();
 
   const [isSignup, setIsSignup] = useState(mode === "signup");
@@ -278,14 +280,8 @@ function AuthPage() {
 
   async function handleOAuthCallback(
     provider: "google" | "facebook" | "tiktok",
-    code: string,
-    state?: string
+    code: string
   ) {
-    const storedState = sessionStorage.getItem(`${provider}_oauth_state`);
-    if (state && storedState && state !== storedState) {
-      toast.error("Invalid OAuth state. Please try again.");
-      return;
-    }
     sessionStorage.removeItem(`${provider}_oauth_state`);
     setSocialBusy(provider);
 
@@ -312,9 +308,20 @@ function AuthPage() {
     }
   }
 
-  useEffect(() => { if (google_code) handleOAuthCallback("google", google_code, google_state); }, [google_code]);
-  useEffect(() => { if (facebook_code) handleOAuthCallback("facebook", facebook_code); }, [facebook_code]);
-  useEffect(() => { if (tiktok_code) handleOAuthCallback("tiktok", tiktok_code); }, [tiktok_code]);
+  useEffect(() => {
+    if (!code) return;
+    // Resolve which provider this callback belongs to by matching the returned
+    // `state` against whichever provider's state we stashed before redirecting.
+    const provider = (["google", "facebook", "tiktok"] as const).find(
+      (p) => oauthState && sessionStorage.getItem(`${p}_oauth_state`) === oauthState
+    );
+    if (!provider) {
+      toast.error("Invalid or expired sign-in attempt. Please try again.");
+      return;
+    }
+    handleOAuthCallback(provider, code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   // ── Social login initiators ──
 

@@ -15,6 +15,12 @@ const secrets = [
   { name: "CF_D1_DATABASE_ID",  label: "D1 Database ID",        required: true },
   { name: "CF_API_TOKEN",       label: "Cloudflare API Token (D1:Edit permission)", required: true },
   { name: "JWT_SECRET",         label: "JWT Secret (run: openssl rand -hex 32)", required: true },
+  { name: "GOOGLE_CLIENT_ID",     label: "Google OAuth Client ID (optional, press Enter to skip)", required: false },
+  { name: "GOOGLE_CLIENT_SECRET", label: "Google OAuth Client Secret (optional)", required: false },
+  { name: "FACEBOOK_APP_ID",      label: "Facebook App ID (optional)", required: false },
+  { name: "FACEBOOK_APP_SECRET",  label: "Facebook App Secret (optional)", required: false },
+  { name: "TIKTOK_CLIENT_KEY",    label: "TikTok Client Key (optional)", required: false },
+  { name: "TIKTOK_CLIENT_SECRET", label: "TikTok Client Secret (optional)", required: false },
 ];
 
 console.log("\n🔐 Fanmeeet — Cloudflare Secrets Setup\n");

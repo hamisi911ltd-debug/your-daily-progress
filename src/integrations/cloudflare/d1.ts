@@ -36,12 +36,18 @@ function restCfg() {
   return { accountId, databaseId, apiToken };
 }
 
-// Try to get the native D1 binding from the Cloudflare Worker request context
+// Try to get the native D1 binding from the Cloudflare Worker's env bindings.
+// Nitro's cloudflare preset stashes the per-request `env` on `globalThis.__env__`
+// (see node_modules/nitro/dist/presets/cloudflare/runtime/_module-handler.mjs and
+// plugin.dev.mjs) — this is the same object in prod and local `vite dev` (via the
+// wrangler platform proxy), so it works regardless of which transitive copy of the
+// `h3`/`h3-v2` package happens to be loaded. Do NOT switch this back to
+// `(await import("h3")).getEvent()`: this project has two separate h3 module
+// instances installed (h3 and h3-v2), and `getEvent()` from the wrong one returns
+// undefined — that previously caused every D1 write to silently no-op.
 async function nativeD1Query<T extends D1Row>(sql: string, params?: unknown[]): Promise<D1QueryResult<T> | null> {
   try {
-    const h3 = await import("h3");
-    const event = h3.getEvent();
-    const db = (event?.context as any)?.cloudflare?.env?.DB;
+    const db = (globalThis as any).__env__?.DB;
     if (!db || typeof db.prepare !== "function") return null;
 
     const upper = sql.trim().toUpperCase();
@@ -120,11 +126,7 @@ async function d1Query<T extends D1Row = D1Row>(sql: string, params?: unknown[])
   if (restCfg()) return restApiQuery<T>(sql, params);
 
   // 3. Local dev without credentials: use node:sqlite
-  try {
-    return await localSqliteQuery<T>(sql, params);
-  } catch {
-    return { results: [] as T[], meta: EMPTY_META, success: true };
-  }
+  return await localSqliteQuery<T>(sql, params);
 }
 
 export async function d1One<T extends D1Row = D1Row>(sql: string, params?: unknown[]): Promise<T | null> {
