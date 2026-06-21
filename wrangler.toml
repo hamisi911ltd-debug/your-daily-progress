@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 CF_ACCOUNT_ID = "7ae8d26215d22e65db04d1ce0febe9e7"
 CF_D1_DATABASE_ID = "0bdf02e5-7bca-4130-a5ad-bb7e6f4e93e9"
+FIREBASE_API_KEY = "AIzaSyCTZjGb-WSk5-z4w4GakZ64VRl7cx_QD9c"
 VITE_FIREBASE_API_KEY = "AIzaSyCTZjGb-WSk5-z4w4GakZ64VRl7cx_QD9c"
 VITE_FIREBASE_AUTH_DOMAIN = "daily-progress-ad412.firebaseapp.com"
 VITE_FIREBASE_PROJECT_ID = "daily-progress-ad412"

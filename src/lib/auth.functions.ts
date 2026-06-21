@@ -315,10 +315,9 @@ async function upsertSocialUser({
 }
 
 // ── Firebase Google Sign-In ───────────────────────────────────────────────────
-// Accepts a Firebase ID token from the client (obtained via signInWithPopup),
-// verifies it with Firebase's token info endpoint (edge-compatible — no Admin SDK
-// needed), then upserts the user into D1 and returns a custom JWT just like the
-// rest of the auth flows.
+// Accepts a Firebase ID token from the client (obtained via signInWithPopup).
+// Verifies it using Firebase's identitytoolkit REST API (edge-compatible —
+// no Admin SDK needed), then upserts the user into D1 and returns a custom JWT.
 
 const FirebaseGoogleInput = z.object({
   idToken: z.string().min(1),
@@ -327,33 +326,41 @@ const FirebaseGoogleInput = z.object({
 export const googleFirebaseSignIn = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => FirebaseGoogleInput.parse(d))
   .handler(async ({ data }) => {
-    // Verify the Firebase ID token via Google's tokeninfo endpoint (edge-safe).
-    const res = await fetch(
-      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(data.idToken)}`
-    );
-    if (!res.ok) throw new Error("Invalid Firebase ID token");
+    const apiKey = process.env.FIREBASE_API_KEY ?? "AIzaSyCTZjGb-WSk5-z4w4GakZ64VRl7cx_QD9c";
 
-    const info = (await res.json()) as {
-      sub: string;
-      email: string;
-      name: string;
-      picture?: string;
-      aud: string;
-      error_description?: string;
+    // Use Firebase's identitytoolkit to look up the user from the ID token.
+    // This is the officially supported REST approach for edge/serverless runtimes.
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: data.idToken }),
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({})) as any;
+      throw new Error(err?.error?.message ?? "Invalid Firebase ID token");
+    }
+
+    const result = (await res.json()) as {
+      users?: Array<{
+        localId: string;
+        email: string;
+        displayName?: string;
+        photoUrl?: string;
+      }>;
     };
 
-    if (info.error_description) throw new Error(info.error_description);
-
-    // Confirm the token was issued for our Firebase project.
-    if (info.aud !== "daily-progress-ad412") {
-      throw new Error("Firebase token audience mismatch");
-    }
+    const fbUser = result.users?.[0];
+    if (!fbUser?.email) throw new Error("Could not retrieve user info from Firebase");
 
     return upsertSocialUser({
       provider: "google",
-      providerId: info.sub,
-      email: info.email,
-      name: info.name ?? info.email,
-      avatar: info.picture,
+      providerId: fbUser.localId,
+      email: fbUser.email,
+      name: fbUser.displayName ?? fbUser.email,
+      avatar: fbUser.photoUrl,
     });
   });
