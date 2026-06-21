@@ -43,8 +43,8 @@ const PackageInput = z.object({
   description: z.string().trim().max(500).optional(),
   durationMinutes: z.number().int().min(10).max(240),
   priceKes: z.number().int().min(100).max(500_000),
-  sessionType: z.enum(["online", "in-person", "hybrid"]).optional(),
-  location: z.string().trim().max(200).optional(),
+  // Every session is a live Jitsi video call now — in-person/hybrid packages
+  // are no longer offered, so this is always "online" regardless of input.
   active: z.boolean().optional(),
 });
 
@@ -74,8 +74,8 @@ export const upsertPackage = createServerFn({ method: "POST" })
         data.description ?? null,
         data.durationMinutes,
         data.priceKes,
-        data.sessionType ?? "online",
-        data.location ?? null,
+        "online",
+        null,
         data.active === false ? 0 : 1,
       ]
     );
@@ -91,6 +91,22 @@ export const upsertPackage = createServerFn({ method: "POST" })
       );
     }
 
+    return { ok: true };
+  });
+
+const HeroImageInput = z.object({
+  heroImageUrl: z.string().trim().url().max(2_000_000),
+});
+
+export const updateCreatorHeroImage = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d: unknown) => HeroImageInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    await d1Run(
+      "UPDATE creator_profiles SET hero_image_url = ? WHERE user_id = ?",
+      [data.heroImageUrl, userId]
+    );
     return { ok: true };
   });
 

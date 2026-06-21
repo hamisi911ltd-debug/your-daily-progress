@@ -14,11 +14,14 @@ export const Route = createFileRoute("/_authenticated/bookings")({
   component: BookingsPage,
 });
 
+type BookingFilter = "upcoming" | "past" | "all";
+
 function BookingsPage() {
   const fetchBookings = useServerFn(listMyBookings);
   const { data, isLoading } = useQuery({ queryKey: ["my-bookings"], queryFn: () => fetchBookings() });
   const qc = useQueryClient();
   const update = useServerFn(updateBookingStatus);
+  const [filter, setFilter] = useState<BookingFilter>("upcoming");
   const updateMut = useMutation({
     mutationFn: (vars: { bookingId: string; status: "confirmed" | "completed" | "cancelled" | "declined" }) =>
       update({ data: vars }),
@@ -27,20 +30,54 @@ function BookingsPage() {
   });
 
   if (isLoading) return <div className="p-12 text-center text-muted-foreground">Loading…</div>;
-  const bookings = data?.bookings ?? [];
+  const allBookings = data?.bookings ?? [];
   const userId = data?.userId;
+
+  const isPast = (b: (typeof allBookings)[number]) =>
+    ["completed", "cancelled", "declined"].includes(b.status) || new Date(b.scheduled_at) < new Date();
+
+  const upcomingCount = allBookings.filter((b) => !isPast(b)).length;
+  const pastCount = allBookings.filter(isPast).length;
+  const bookings =
+    filter === "upcoming" ? allBookings.filter((b) => !isPast(b)) :
+    filter === "past" ? allBookings.filter(isPast) :
+    allBookings;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
       <h1 className="font-display text-4xl font-bold">My bookings</h1>
       <p className="mt-1 text-muted-foreground">Upcoming and past sessions.</p>
 
-      {bookings.length === 0 ? (
+      {allBookings.length > 0 && (
+        <div className="mt-6 flex gap-1 rounded-2xl bg-secondary/60 p-1 sm:max-w-md">
+          {([
+            ["upcoming", `Upcoming (${upcomingCount})`],
+            ["past", `Past (${pastCount})`],
+            ["all", "All"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${
+                filter === key ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {allBookings.length === 0 ? (
         <div className="mt-10 rounded-3xl bg-card p-12 text-center shadow-card">
           <CalendarCheck2 className="mx-auto h-12 w-12 text-primary" />
           <h3 className="mt-4 font-display text-2xl font-bold">No bookings yet</h3>
           <p className="mt-2 text-muted-foreground">Browse creators and book your first session.</p>
           <Button variant="hero" className="mt-6" asChild><Link to="/browse">Browse creators</Link></Button>
+        </div>
+      ) : bookings.length === 0 ? (
+        <div className="mt-10 rounded-3xl bg-card p-12 text-center shadow-card">
+          <p className="text-muted-foreground">No {filter} bookings.</p>
         </div>
       ) : (
         <div className="mt-8 space-y-4">

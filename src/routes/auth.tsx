@@ -22,7 +22,7 @@ import {
 import { requestPasswordReset } from "@/lib/password-reset.functions";
 import {
   ShieldCheck, Cookie, Users, Mic2, Eye, EyeOff,
-  Phone, Mail, CheckCircle2, ExternalLink,
+  Phone, Mail, CheckCircle2, ExternalLink, Instagram,
 } from "lucide-react";
 
 const searchSchema = z.object({
@@ -265,6 +265,8 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [name, setName] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [terms, setTerms] = useState(false);
   const [cookies, setCookies] = useState(false);
   const [openDoc, setOpenDoc] = useState<"terms" | "privacy" | null>(null);
@@ -356,7 +358,15 @@ function AuthPage() {
     setBusy(true);
     try {
       if (isSignup) {
-        const { token, isCreator } = await signUp({ data: { name, email, password, phone: phone || undefined, role: selectedRole } }) as any;
+        const { token, isCreator } = await signUp({
+          data: {
+            name, email, password,
+            phone: phone || undefined,
+            role: selectedRole,
+            instagramUrl: instagram || undefined,
+            tiktokUrl: tiktok || undefined,
+          },
+        }) as any;
         setStoredToken(token);
         window.dispatchEvent(new Event("cc:auth:change"));
         toast.success("Welcome to Fanmeeet!");
@@ -500,6 +510,43 @@ function AuthPage() {
                   />
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">Required for M-Pesa payments</p>
+              </div>
+            )}
+
+            {isSignup && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="instagram" className="flex items-center gap-1.5">
+                    <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
+                  </Label>
+                  <Input
+                    id="instagram"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    maxLength={200}
+                    placeholder="@yourhandle"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="tiktok" className="flex items-center gap-1.5">
+                    <span className="inline-flex h-3.5 w-3.5 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5">
+                      <TikTokIcon />
+                    </span>
+                    TikTok
+                  </Label>
+                  <Input
+                    id="tiktok"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    maxLength={200}
+                    placeholder="@yourhandle"
+                    className="mt-1"
+                  />
+                </div>
+                <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
+                  Optional — add more later from your profile page.
+                </p>
               </div>
             )}
 

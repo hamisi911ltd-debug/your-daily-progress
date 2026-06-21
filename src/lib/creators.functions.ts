@@ -98,12 +98,17 @@ export const getCreator = createServerFn({ method: "POST" })
       avatar_url: string | null;
       bio: string | null;
       location: string | null;
+      instagram_url: string | null;
+      tiktok_url: string | null;
+      snapchat_url: string | null;
+      facebook_url: string | null;
     };
 
     const creator = await d1One<CreatorRow>(
       `SELECT cp.user_id, cp.headline, cp.long_bio, cp.hero_image_url, cp.niche_tags, cp.verified,
               cp.average_rating, cp.total_sessions, cp.starting_price_kes, cp.active,
-              p.display_name, p.avatar_url, p.bio, p.location
+              p.display_name, p.avatar_url, p.bio, p.location,
+              p.instagram_url, p.tiktok_url, p.snapchat_url, p.facebook_url
        FROM creator_profiles cp
        LEFT JOIN profiles p ON p.id = cp.user_id
        WHERE cp.user_id = ? AND cp.active = 1`,
@@ -147,6 +152,10 @@ export const getCreator = createServerFn({ method: "POST" })
         avatar_url: creator.avatar_url ?? null,
         bio: creator.bio ?? null,
         location: creator.location ?? null,
+        instagram_url: creator.instagram_url ?? null,
+        tiktok_url: creator.tiktok_url ?? null,
+        snapchat_url: creator.snapchat_url ?? null,
+        facebook_url: creator.facebook_url ?? null,
         headline: creator.headline,
         long_bio: creator.long_bio,
         hero_image_url: creator.hero_image_url,

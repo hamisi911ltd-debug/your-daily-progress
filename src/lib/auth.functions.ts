@@ -19,6 +19,10 @@ const SignUpInput = z.object({
   password: z.string().min(8).max(72),
   phone: z.string().trim().min(9).max(20).optional(),
   role: z.enum(["fan", "creator"]).default("fan"),
+  instagramUrl: z.string().trim().max(200).optional(),
+  tiktokUrl: z.string().trim().max(200).optional(),
+  facebookUrl: z.string().trim().max(200).optional(),
+  snapchatUrl: z.string().trim().max(200).optional(),
 });
 
 export const signUp = createServerFn({ method: "POST" })
@@ -36,8 +40,19 @@ export const signUp = createServerFn({ method: "POST" })
       [id, data.email, passwordHash, data.name, data.phone ?? null, now]
     );
     await d1Run(
-      "INSERT OR IGNORE INTO profiles (id, display_name, phone_number, created_at) VALUES (?, ?, ?, ?)",
-      [id, data.name, data.phone ?? null, now]
+      `INSERT OR IGNORE INTO profiles
+         (id, display_name, phone_number, instagram_url, tiktok_url, facebook_url, snapchat_url, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        data.name,
+        data.phone ?? null,
+        data.instagramUrl ?? null,
+        data.tiktokUrl ?? null,
+        data.facebookUrl ?? null,
+        data.snapchatUrl ?? null,
+        now,
+      ]
     );
     await d1Run(
       "INSERT OR IGNORE INTO user_roles (user_id, role, created_at) VALUES (?, 'fan', ?)",

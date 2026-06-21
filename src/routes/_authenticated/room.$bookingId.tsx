@@ -75,10 +75,14 @@ function Room() {
           parentNode: containerRef.current,
           width: "100%",
           height: "100%",
-          userInfo: { displayName },
+          // Skip Jitsi's own identity/login step entirely — the booking is already
+          // tied to an authenticated Fanmeeet account, so we hand its name + email
+          // straight to the call instead of asking the user to type them again.
+          userInfo: { displayName, email: user?.email },
           configOverwrite: {
             disableDeepLinking: true,
-            prejoinPageEnabled: true,
+            prejoinConfig: { enabled: false },
+            prejoinPageEnabled: false,
             startWithVideoMuted: false,
             startWithAudioMuted: false,
             enableWelcomePage: false,
@@ -90,6 +94,7 @@ function Room() {
             disablePolls: true,
             disableReactions: false,
             disableSelfView: false,
+            disableProfile: true,
             // Two-party calls route peer-to-peer instead of through the relay server — the
             // single biggest lever for cutting latency/lag on a free shared Jitsi deployment.
             p2p: { enabled: true },
@@ -126,7 +131,7 @@ function Room() {
               "settings",
               "hangup",
             ],
-            SETTINGS_SECTIONS: ["devices", "profile"],
+            SETTINGS_SECTIONS: ["devices"],
           },
         });
 

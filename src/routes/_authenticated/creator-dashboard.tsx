@@ -2,22 +2,25 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMyCreatorProfile, upsertPackage } from "@/lib/creator-onboarding.functions";
+import { getMyCreatorProfile, upsertPackage, updateCreatorHeroImage } from "@/lib/creator-onboarding.functions";
 import { getMyGallery, addGalleryPhoto, deleteGalleryPhoto } from "@/lib/gallery.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Package, Video, MapPin, Layers, Images, Upload, Trash2, X } from "lucide-react";
+import {
+  Plus, Package, Video, MapPin, Layers, Images, Upload, Trash2, X,
+  Star, BadgeCheck, Camera, CalendarCheck2,
+} from "lucide-react";
 
 const SESSION_TYPE_LABELS: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-  online:     { icon: <Video className="h-3.5 w-3.5" />,  label: "Online (Zoom)",  color: "bg-primary/10 text-primary" },
+  online:     { icon: <Video className="h-3.5 w-3.5" />,  label: "Online",  color: "bg-primary/10 text-primary" },
   "in-person":{ icon: <MapPin className="h-3.5 w-3.5" />, label: "In-person",      color: "bg-accent/20 text-accent-foreground" },
   hybrid:     { icon: <Layers className="h-3.5 w-3.5" />, label: "Hybrid",         color: "bg-secondary/20 text-secondary-foreground" },
 };
 
-type DashTab = "packages" | "gallery";
+type DashTab = "packages" | "gallery" | "cover";
 
 async function compressImage(file: File, maxW: number, maxH: number, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -79,6 +82,22 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard icon={<Package className="h-4 w-4" />} label="Packages" value={(data as any).packages.length} />
+        <StatCard icon={<CalendarCheck2 className="h-4 w-4" />} label="Sessions done" value={(data as any).profile?.total_sessions ?? 0} />
+        <StatCard
+          icon={<Star className="h-4 w-4" />}
+          label="Rating"
+          value={(data as any).profile?.average_rating > 0 ? Number((data as any).profile.average_rating).toFixed(1) : "New"}
+        />
+        <StatCard
+          icon={<BadgeCheck className="h-4 w-4" />}
+          label="Status"
+          value={(data as any).profile?.verified ? "Verified" : "Unverified"}
+        />
+      </div>
+
       {/* Tabs */}
       <div className="mt-8 flex gap-1 rounded-2xl bg-secondary/60 p-1">
         <button
@@ -92,6 +111,12 @@ function Dashboard() {
           className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition ${tab === "gallery" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
         >
           <Images className="h-4 w-4" /> Photo Gallery
+        </button>
+        <button
+          onClick={() => setTab("cover")}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition ${tab === "cover" ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Camera className="h-4 w-4" /> Cover Photo
         </button>
       </div>
 
@@ -140,7 +165,89 @@ function Dashboard() {
       )}
 
       {tab === "gallery" && <GalleryManager />}
+      {tab === "cover" && <CoverPhotoManager currentUrl={(data as any).profile?.hero_image_url ?? null} />}
     </div>
+  );
+}
+
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-card p-4 shadow-card">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate font-display text-lg font-bold leading-tight">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function CoverPhotoManager({ currentUrl }: { currentUrl: string | null }) {
+  const doUpdate = useServerFn(updateCreatorHeroImage);
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(currentUrl);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Image must be under 15MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const compressed = await compressImage(file, 1000, 1250, 0.85);
+      await doUpdate({ data: { heroImageUrl: compressed } });
+      setPreview(compressed);
+      qc.invalidateQueries({ queryKey: ["my-creator-profile"] });
+      toast.success("Cover photo updated!");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="font-display text-2xl font-bold">Cover photo</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Shown on your browse card and at the top of your public profile.
+      </p>
+
+      <div className="mt-6 grid gap-6 sm:grid-cols-[280px_1fr]">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-secondary shadow-card">
+          {preview ? (
+            <img src={preview} alt="Cover preview" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-sunset text-sm text-white/80">
+              No cover photo yet
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-start gap-3">
+          <Button type="button" variant="hero" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Uploading…
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" /> {preview ? "Replace cover photo" : "Upload cover photo"}
+              </>
+            )}
+          </Button>
+          <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={handleFileSelect} />
+          <p className="text-xs text-muted-foreground">JPG, PNG or WEBP · Max 15MB · Portrait works best (4:5)</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -310,8 +417,7 @@ function PackageForm({ onDone }: { onDone: () => void }) {
   const [desc, setDesc] = useState("");
   const [duration, setDuration] = useState("30");
   const [price, setPrice] = useState("2500");
-  const [sessionType, setSessionType] = useState<"online" | "in-person" | "hybrid">("online");
-  const [location, setLocation] = useState("");
+  const [savedCount, setSavedCount] = useState(0);
   const upsert = useServerFn(upsertPackage);
   const qc = useQueryClient();
   const mut = useMutation({
@@ -322,14 +428,18 @@ function PackageForm({ onDone }: { onDone: () => void }) {
           description: desc,
           durationMinutes: parseInt(duration, 10),
           priceKes: parseInt(price, 10),
-          sessionType,
-          location: location || undefined,
         },
       }),
     onSuccess: () => {
-      toast.success("Package created");
+      toast.success("Package added — add another or tap Done");
       qc.invalidateQueries({ queryKey: ["my-creator-profile"] });
-      onDone();
+      setSavedCount((n) => n + 1);
+      // Reset the fields so the creator can post several packages back-to-back
+      // without re-opening this form each time.
+      setTitle("");
+      setDesc("");
+      setDuration("30");
+      setPrice("2500");
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed"),
   });
@@ -339,6 +449,9 @@ function PackageForm({ onDone }: { onDone: () => void }) {
       onSubmit={(e) => { e.preventDefault(); mut.mutate(); }}
       className="mt-6 grid gap-4 rounded-2xl bg-card p-6 shadow-card sm:grid-cols-2"
     >
+      <div className="sm:col-span-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-primary">
+        {SESSION_TYPE_LABELS.online.icon} All sessions are live online video calls
+      </div>
       <div className="sm:col-span-2">
         <Label>Title</Label>
         <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
@@ -355,41 +468,13 @@ function PackageForm({ onDone }: { onDone: () => void }) {
         <Label>Price (KES)</Label>
         <Input type="number" min={100} max={500000} value={price} onChange={(e) => setPrice(e.target.value)} required />
       </div>
-      <div className="sm:col-span-2">
-        <Label>Session type</Label>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {(["online", "in-person", "hybrid"] as const).map((t) => {
-            const st = SESSION_TYPE_LABELS[t];
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setSessionType(t)}
-                className={`inline-flex items-center gap-1.5 rounded-full border-2 px-4 py-2 text-sm font-semibold transition ${
-                  sessionType === t ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40"
-                }`}
-              >
-                {st.icon} {st.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      {(sessionType === "in-person" || sessionType === "hybrid") && (
-        <div className="sm:col-span-2">
-          <Label>Meeting location</Label>
-          <Input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            maxLength={200}
-            placeholder="e.g. Nairobi CBD, ABC Place, 3rd Floor"
-            required={sessionType === "in-person"}
-          />
-        </div>
-      )}
       <div className="sm:col-span-2 flex gap-2">
-        <Button type="submit" variant="hero" disabled={mut.isPending}>Save package</Button>
-        <Button type="button" variant="ghost" onClick={onDone}>Cancel</Button>
+        <Button type="submit" variant="hero" disabled={mut.isPending}>
+          {mut.isPending ? "Saving…" : "Save & add another"}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          {savedCount > 0 ? "Done" : "Cancel"}
+        </Button>
       </div>
     </form>
   );
