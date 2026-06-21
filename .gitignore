@@ -24,6 +24,10 @@ dist-ssr
 # Local dev database
 .dev-data/
 
+# Kiro agent skills (IDE-specific, not project files)
+.agents/
+skills-lock.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
