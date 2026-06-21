@@ -15,10 +15,12 @@ import { toast } from "sonner";
 import { getTokenPayload, setStoredToken } from "@/integrations/cloudflare/auth";
 import {
   signIn, signUp,
-  googleSignIn, getGoogleAuthUrl,
+  googleFirebaseSignIn,
   facebookSignIn, getFacebookAuthUrl,
   tiktokSignIn, getTikTokAuthUrl,
 } from "@/lib/auth.functions";
+import { auth, googleProvider } from "@/lib/firebase";
+import { signInWithPopup } from "firebase/auth";
 import { requestPasswordReset } from "@/lib/password-reset.functions";
 import {
   ShieldCheck, Cookie, Users, Mic2, Eye, EyeOff,
@@ -281,7 +283,7 @@ function AuthPage() {
   // ── OAuth callbacks ──
 
   async function handleOAuthCallback(
-    provider: "google" | "facebook" | "tiktok",
+    provider: "facebook" | "tiktok",
     code: string
   ) {
     sessionStorage.removeItem(`${provider}_oauth_state`);
@@ -290,10 +292,7 @@ function AuthPage() {
     const redirectUri = `${window.location.origin}/auth`;
     try {
       let token: string;
-      if (provider === "google") {
-        const r = await googleSignIn({ data: { code, redirectUri } });
-        token = (r as any).token;
-      } else if (provider === "facebook") {
+      if (provider === "facebook") {
         const r = await facebookSignIn({ data: { code, redirectUri } });
         token = (r as any).token;
       } else {
@@ -312,9 +311,8 @@ function AuthPage() {
 
   useEffect(() => {
     if (!code) return;
-    // Resolve which provider this callback belongs to by matching the returned
-    // `state` against whichever provider's state we stashed before redirecting.
-    const provider = (["google", "facebook", "tiktok"] as const).find(
+    // Google now uses Firebase popup — only Facebook/TikTok use the redirect flow.
+    const provider = (["facebook", "tiktok"] as const).find(
       (p) => oauthState && sessionStorage.getItem(`${p}_oauth_state`) === oauthState
     );
     if (!provider) {
@@ -330,9 +328,21 @@ function AuthPage() {
   async function startOAuth(provider: "google" | "facebook" | "tiktok") {
     setSocialBusy(provider);
     try {
+      if (provider === "google") {
+        // Use Firebase popup — no redirect dance needed
+        const result = await signInWithPopup(auth, googleProvider);
+        const idToken = await result.user.getIdToken();
+        const { token } = await googleFirebaseSignIn({ data: { idToken } }) as any;
+        setStoredToken(token);
+        window.dispatchEvent(new Event("cc:auth:change"));
+        toast.success("Signed in with Google!");
+        navigate({ to: (returnTo as any) ?? "/bookings" });
+        return;
+      }
+
+      // Facebook / TikTok keep the existing redirect flow
       let urlData: { url: string | null };
-      if (provider === "google") urlData = await getGoogleAuthUrl() as any;
-      else if (provider === "facebook") urlData = await getFacebookAuthUrl() as any;
+      if (provider === "facebook") urlData = await getFacebookAuthUrl() as any;
       else urlData = await getTikTokAuthUrl() as any;
 
       if (!urlData?.url) {
@@ -345,8 +355,13 @@ function AuthPage() {
       sessionStorage.setItem(`${provider}_oauth_state`, state);
       const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
       window.location.href = `${urlData.url}&redirect_uri=${redirectUri}&state=${state}`;
-    } catch {
-      toast.error("Could not start social sign-in");
+    } catch (err: any) {
+      // User closed the popup — don't show an error toast
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+        setSocialBusy(null);
+        return;
+      }
+      toast.error(err?.message ?? "Could not start social sign-in");
       setSocialBusy(null);
     }
   }

@@ -313,3 +313,47 @@ async function upsertSocialUser({
   });
   return { token };
 }
+
+// ── Firebase Google Sign-In ───────────────────────────────────────────────────
+// Accepts a Firebase ID token from the client (obtained via signInWithPopup),
+// verifies it with Firebase's token info endpoint (edge-compatible — no Admin SDK
+// needed), then upserts the user into D1 and returns a custom JWT just like the
+// rest of the auth flows.
+
+const FirebaseGoogleInput = z.object({
+  idToken: z.string().min(1),
+});
+
+export const googleFirebaseSignIn = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) => FirebaseGoogleInput.parse(d))
+  .handler(async ({ data }) => {
+    // Verify the Firebase ID token via Google's tokeninfo endpoint (edge-safe).
+    const res = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(data.idToken)}`
+    );
+    if (!res.ok) throw new Error("Invalid Firebase ID token");
+
+    const info = (await res.json()) as {
+      sub: string;
+      email: string;
+      name: string;
+      picture?: string;
+      aud: string;
+      error_description?: string;
+    };
+
+    if (info.error_description) throw new Error(info.error_description);
+
+    // Confirm the token was issued for our Firebase project.
+    if (info.aud !== "daily-progress-ad412") {
+      throw new Error("Firebase token audience mismatch");
+    }
+
+    return upsertSocialUser({
+      provider: "google",
+      providerId: info.sub,
+      email: info.email,
+      name: info.name ?? info.email,
+      avatar: info.picture,
+    });
+  });

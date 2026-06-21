@@ -1,22 +1,31 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro (build-only using cloudflare as a default target),
-//     componentTagger (dev-only), VITE_* env injection, @ path alias, React/TanStack dedupe,
-//     error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import type { Plugin } from "vite";
+
+// Stub for Cloudflare runtime built-ins that don't exist in Node.js dev mode.
+// The real modules are provided by the Workers runtime at deploy time.
+function cloudflareDevStubPlugin(): Plugin {
+  const CLOUDFLARE_BUILTINS = ["cloudflare:workers", "cloudflare:sockets"];
+  return {
+    name: "cloudflare-dev-stub",
+    enforce: "pre",
+    resolveId(id) {
+      if (CLOUDFLARE_BUILTINS.includes(id)) return `\0${id}`;
+    },
+    load(id) {
+      if (CLOUDFLARE_BUILTINS.includes(id.replace("\0", ""))) {
+        // Return a minimal stub — DurableObject is the only export used locally
+        return `export class DurableObject {}; export default {};`;
+      }
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
     server: { entry: "server" },
   },
   vite: {
-    // "cloudflare:workers" (used by signaling-room.ts's DurableObject base class) is a
-    // runtime-provided built-in on Workers — Rollup can't resolve it locally, so it must
-    // stay an external/unbundled import rather than be inlined. (Separately, `npm run build`
-    // also runs scripts/patch-server-bundle.js after this — see that file for why.)
     build: { rollupOptions: { external: ["cloudflare:workers"] } },
+    plugins: [cloudflareDevStubPlugin()],
   },
 });
