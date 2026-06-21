@@ -440,9 +440,6 @@ function AuthPage() {
                 </div>
                 <div>
                   <Label htmlFor="tiktok" className="flex items-center gap-1.5">
-                    <span className="inline-flex h-3.5 w-3.5 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5">
-                      <TikTokIcon />
-                    </span>
                     TikTok
                   </Label>
                   <Input
