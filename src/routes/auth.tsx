@@ -16,8 +16,6 @@ import { getTokenPayload, setStoredToken } from "@/integrations/cloudflare/auth"
 import {
   signIn, signUp,
   googleFirebaseSignIn,
-  facebookSignIn, getFacebookAuthUrl,
-  tiktokSignIn, getTikTokAuthUrl,
 } from "@/lib/auth.functions";
 import { auth, googleProvider } from "@/lib/firebase";
 import { signInWithPopup } from "firebase/auth";
@@ -30,12 +28,6 @@ import {
 const searchSchema = z.object({
   mode: z.enum(["signin", "signup"]).optional(),
   returnTo: z.string().optional(),
-  // Google, Facebook and TikTok all redirect back to this same /auth page with
-  // generic OAuth2 "code"/"state" params — the provider is resolved client-side
-  // by matching `state` against whichever `<provider>_oauth_state` was stashed
-  // in sessionStorage when the flow was started (see startOAuth below).
-  code: z.string().optional(),
-  state: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth")({
@@ -58,22 +50,6 @@ function GoogleIcon() {
       <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853" />
       <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
       <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
-    </svg>
-  );
-}
-
-function MetaIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true">
-      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-    </svg>
-  );
-}
-
-function TikTokIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V9.17a8.18 8.18 0 004.79 1.53V7.26a4.85 4.85 0 01-1.02-.57z" />
     </svg>
   );
 }
@@ -257,7 +233,7 @@ function SocialButton({
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 function AuthPage() {
-  const { mode, returnTo, code, state: oauthState } = Route.useSearch();
+  const { mode, returnTo } = Route.useSearch();
   const navigate = useNavigate();
 
   const [isSignup, setIsSignup] = useState(mode === "signup");
@@ -274,95 +250,31 @@ function AuthPage() {
   const [openDoc, setOpenDoc] = useState<"terms" | "privacy" | null>(null);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [socialBusy, setSocialBusy] = useState<"google" | "facebook" | "tiktok" | null>(null);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   useEffect(() => {
     if (getTokenPayload()) navigate({ to: (returnTo as any) ?? "/bookings" });
   }, []);
 
-  // ── OAuth callbacks ──
+  // ── Google sign-in ──
 
-  async function handleOAuthCallback(
-    provider: "facebook" | "tiktok",
-    code: string
-  ) {
-    sessionStorage.removeItem(`${provider}_oauth_state`);
-    setSocialBusy(provider);
-
-    const redirectUri = `${window.location.origin}/auth`;
+  async function handleGoogleSignIn() {
+    setGoogleBusy(true);
     try {
-      let token: string;
-      if (provider === "facebook") {
-        const r = await facebookSignIn({ data: { code, redirectUri } });
-        token = (r as any).token;
-      } else {
-        const r = await tiktokSignIn({ data: { code, redirectUri } });
-        token = (r as any).token;
-      }
+      const result = await signInWithPopup(auth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const { token } = await googleFirebaseSignIn({ data: { idToken } }) as any;
       setStoredToken(token);
       window.dispatchEvent(new Event("cc:auth:change"));
-      toast.success("Signed in successfully!");
+      toast.success("Signed in with Google!");
       navigate({ to: (returnTo as any) ?? "/bookings" });
     } catch (err: any) {
-      toast.error(err?.message ?? `${provider} sign-in failed`);
-      setSocialBusy(null);
-    }
-  }
-
-  useEffect(() => {
-    if (!code) return;
-    // Google now uses Firebase popup — only Facebook/TikTok use the redirect flow.
-    const provider = (["facebook", "tiktok"] as const).find(
-      (p) => oauthState && sessionStorage.getItem(`${p}_oauth_state`) === oauthState
-    );
-    if (!provider) {
-      toast.error("Invalid or expired sign-in attempt. Please try again.");
-      return;
-    }
-    handleOAuthCallback(provider, code);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
-
-  // ── Social login initiators ──
-
-  async function startOAuth(provider: "google" | "facebook" | "tiktok") {
-    setSocialBusy(provider);
-    try {
-      if (provider === "google") {
-        // Use Firebase popup — no redirect dance needed
-        const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken();
-        const { token } = await googleFirebaseSignIn({ data: { idToken } }) as any;
-        setStoredToken(token);
-        window.dispatchEvent(new Event("cc:auth:change"));
-        toast.success("Signed in with Google!");
-        navigate({ to: (returnTo as any) ?? "/bookings" });
-        return;
-      }
-
-      // Facebook / TikTok keep the existing redirect flow
-      let urlData: { url: string | null };
-      if (provider === "facebook") urlData = await getFacebookAuthUrl() as any;
-      else urlData = await getTikTokAuthUrl() as any;
-
-      if (!urlData?.url) {
-        toast.error(`${provider.charAt(0).toUpperCase() + provider.slice(1)} sign-in is not configured yet.`);
-        setSocialBusy(null);
-        return;
-      }
-
-      const state = crypto.randomUUID();
-      sessionStorage.setItem(`${provider}_oauth_state`, state);
-      const redirectUri = encodeURIComponent(`${window.location.origin}/auth`);
-      window.location.href = `${urlData.url}&redirect_uri=${redirectUri}&state=${state}`;
-    } catch (err: any) {
-      // User closed the popup — don't show an error toast
       if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
-        setSocialBusy(null);
         return;
       }
-      toast.error(err?.message ?? "Could not start social sign-in");
-      setSocialBusy(null);
+      toast.error(err?.message ?? "Google sign-in failed");
+    } finally {
+      setGoogleBusy(false);
     }
   }
 
@@ -400,8 +312,7 @@ function AuthPage() {
     }
   }
 
-  const anySocialBusy = socialBusy !== null;
-  const canSubmit = !busy && !anySocialBusy && (!isSignup || (terms && cookies));
+  const canSubmit = !busy && !googleBusy && (!isSignup || (terms && cookies));
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] overflow-hidden bg-secondary py-12">
@@ -426,30 +337,14 @@ function AuthPage() {
           </p>
 
           {/* Social sign-in buttons */}
-          <div className="mt-6 space-y-2">
+          <div className="mt-6">
             <SocialButton
               icon={<GoogleIcon />}
               label="Continue with Google"
-              onClick={() => startOAuth("google")}
-              loading={socialBusy === "google"}
-              disabled={anySocialBusy && socialBusy !== "google"}
+              onClick={handleGoogleSignIn}
+              loading={googleBusy}
+              disabled={googleBusy}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <SocialButton
-                icon={<MetaIcon />}
-                label="Facebook"
-                onClick={() => startOAuth("facebook")}
-                loading={socialBusy === "facebook"}
-                disabled={anySocialBusy && socialBusy !== "facebook"}
-              />
-              <SocialButton
-                icon={<TikTokIcon />}
-                label="TikTok"
-                onClick={() => startOAuth("tiktok")}
-                loading={socialBusy === "tiktok"}
-                disabled={anySocialBusy && socialBusy !== "tiktok"}
-              />
-            </div>
           </div>
 
           <div className="my-5 flex items-center gap-3">
